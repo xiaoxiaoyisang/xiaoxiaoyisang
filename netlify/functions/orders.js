@@ -3,11 +3,11 @@ const { getStore } = require('@netlify/blobs');
 const STORE_NAME = 'orders';
 
 exports.handler = async (event, context) => {
-  const store = getStore({ name: STORE_NAME, context });
-
-  const method = event.httpMethod;
-
-  const headers = {
+  const store = getStore({
+    name: STORE_NAME,
+    siteID: process.env.NETLIFY_BLOBS_SITE_ID,
+    token: process.env.NETLIFY_BLOBS_TOKEN
+  });
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
