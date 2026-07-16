@@ -1,0 +1,8 @@
+{
+  "name": "today-menu",
+  "version": "1.0.0",
+  "description": "今天吃什么 - 情侣点餐应用",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>购物车 - 今天吃什么</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        html {
+            scroll-behavior: smooth;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: 'PingFang SC', 'Noto Sans SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            color: #3D2C22;
+            background-color: #FFFAF6;
+            margin: 0;
+            padding: 0;
+        }
+        .cart-item-card {
+            background: #FFFFFF;
+            border: 1.5px solid #FFE8D6;
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 10px;
+            transition: transform 0.15s ease;
+        }
+        .cart-item-card:active {
+            transform: scale(0.985);
+        }
+        .grocery-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px dashed #FFE8D6;
+            font-size: 13px;
+            color: #3D2C22;
+        }
+        .grocery-item:last-child {
+            border-bottom: none;
+        }
+        .grocery-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #6BC5A0;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .checkout-btn {
+            background: linear-gradient(135deg, #FF8C42 0%, #FF6B2C 100%);
+            color: #FFFFFF;
+            border: none;
+            border-radius: 9999px;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'PingFang SC', 'Noto Sans SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            width: 100%;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+            animation: subtleBounce 3s ease-in-out infinite;
+        }
+        .checkout-btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 6px rgba(255, 140, 66, 0.25);
+        }
+        @keyframes subtleBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+        .checkout-btn:hover {
+            box-shadow: 0 6px 18px rgba(255, 140, 66, 0.4);
+        }
+        .summary-card {
+            background: #FFFFFF;
+            border: 1.5px solid #FFE8D6;
+            border-radius: 16px;
+            padding: 14px 16px;
+        }
+        .grocery-section-header {
+            cursor: pointer;
+            user-select: none;
+        }
+        .grocery-section-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .grocery-section-content.expanded {
+            max-height: 1000px;
+        }
+        .fish-placeholder {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #E8F8F1 0%, #D4F0E3 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1.5px solid #FFE8D6;
+        }
+        .swipe-hint {
+            color: #C4B5A8;
+            font-size: 14px;
+            opacity: 0.5;
+            flex-shrink: 0;
+            margin-left: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+        .swipe-hint:hover {
+            opacity: 1;
+            color: #EF5350;
+        }
+        .copy-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            margin-top: 12px;
+            padding: 10px 16px;
+            border-radius: 9999px;
+            background: #E8F8F1;
+            color: #6BC5A0;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1.5px solid #D4F0E3;
+            cursor: pointer;
+            font-family: 'PingFang SC', 'Noto Sans SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            transition: background 0.15s ease;
+        }
+        .copy-btn:active {
+            background: #D4F0E3;
+        }
+        .empty-cart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .empty-cart-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+        .empty-cart-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #3D2C22;
+            margin-bottom: 8px;
+        }
+        .empty-cart-desc {
+            font-size: 14px;
+            color: #A89588;
+            margin-bottom: 24px;
+        }
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(61, 44, 34, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(61, 44, 34, 0.5);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 0 32px;
+            max-width: 320px;
+            width: 100%;
+            text-align: center;
+        }
+        .modal-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #3D2C22;
+            margin-bottom: 8px;
+        }
+        .modal-desc {
+            font-size: 14px;
+            color: #7A6558;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-family: 'PingFang SC', 'Noto Sans SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            transition: transform 0.15s ease;
+        }
+        .modal-btn:active {
+            transform: scale(0.96);
+        }
+        .modal-btn-cancel {
+            background: #FFF0E6;
+            color: #FF8C42;
+        }
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #FF8C42 0%, #FF6B2C 100%);
+            color: #FFFFFF;
+        }
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            position: relative;
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航栏 -->
+        <header class="top-header">
+            <div class="top-header-inner">
+                <button class="back-btn" onclick="goBack()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D2C22" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 18L9 12L15 6"/>
+                    </svg>
+                </button>
+                <div class="flex items-center gap-1.5">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 7H8.5L10 3H14L12 7H21L19.5 11H17"/>
+                        <path d="M19.5 11L17 20H7L4.5 11"/>
+                        <circle cx="9" cy="21" r="0.5" fill="#FF8C42" stroke="none"/>
+                        <circle cx="15" cy="21" r="0.5" fill="#FF8C42" stroke="none"/>
+                    </svg>
+                    <span style="font-size: 17px; font-weight: 700; color: #3D2C22;">购物车</span>
+                    <span id="cart-badge" style="font-size: 12px; font-weight: 700; background: #FF6B8A; color: #FFF; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; margin-left: 2px;">0</span>
+                </div>
+                <button id="clear-cart-btn" style="font-size: 13px; color: #A89588; font-weight: 500; background: none; border: none; cursor: pointer; padding: 4px 8px; font-family: 'PingFang SC', 'Noto Sans SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;">
+                    清空
+                </button>
+                <a href="orders.html" class="w-8 h-8 rounded-full flex items-center justify-center transition-transform active:scale-90" style="background: linear-gradient(135deg, #FF8C42, #FF6B8A); color: #FFFFFF; text-decoration: none; margin-left: 4px;" title="接单台">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                </a>
+            </div>
+        </header>
+
+        <!-- 主要内容 -->
+        <main class="pt-16 pb-52 px-3">
+            <!-- 购物车商品列表 -->
+            <div id="cart-items-container"></div>
+
+            <!-- 空购物车状态 -->
+            <div id="empty-cart" class="empty-cart" style="display: none;">
+                <svg class="empty-cart-icon" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 7H8.5L10 3H14L12 7H21L19.5 11H17"/>
+                    <path d="M19.5 11L17 20H7L4.5 11"/>
+                    <circle cx="9" cy="21" r="1"/>
+                    <circle cx="15" cy="21" r="1"/>
+                </svg>
+                <div class="empty-cart-title">购物车是空的</div>
+                <div class="empty-cart-desc">快去挑选喜欢的菜品吧~</div>
+                <button class="btn-primary" onclick="goHome()">去逛逛</button>
+            </div>
+
+            <!-- 采购清单 -->
+            <div id="grocery-section" class="summary-card mt-3" style="display: none;">
+                <div class="grocery-section-header flex items-center justify-between" onclick="toggleGrocery()">
+                    <div class="flex items-center gap-2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 8L7 20C7 20.6 7.4 21 8 21H16C16.6 21 17 20.6 17 20L18 8"/>
+                            <path d="M3 8H21" stroke-width="1.8"/>
+                            <path d="M9 8V5C9 3.3 10.3 2 12 2C13.7 2 15 3.3 15 5V8"/>
+                            <path d="M10 12L10 17" stroke-width="1.5" opacity="0.4"/>
+                            <path d="M14 12L14 17" stroke-width="1.5" opacity="0.4"/>
+                        </svg>
+                        <span style="font-size: 14px; font-weight: 700; color: #3D2C22;">采购清单</span>
+                        <span id="grocery-count" style="font-size: 11px; color: #A89588; font-weight: 500;">共0种食材</span>
+                    </div>
+                    <svg id="grocery-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A89588" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease;">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </div>
+                <div class="grocery-section-content expanded" id="grocery-content">
+                    <div class="mt-2" style="background: #FFF8F2; border-radius: 12px; padding: 10px 14px;" id="grocery-list">
+                    </div>
+                    <button class="copy-btn" onclick="copyGroceryList()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        一键复制清单
+                    </button>
+                </div>
+            </div>
+
+            <!-- 订单摘要 -->
+            <div id="order-summary" class="summary-card mt-3" style="display: none;">
+                <div class="flex items-center justify-between py-0.5">
+                    <div class="flex items-center gap-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2L14.5 8.5L21 9.5L16.5 14L17.5 21L12 17.5L6.5 21L7.5 14L3 9.5L9.5 8.5L12 2Z"/>
+                        </svg>
+                        <span style="font-size: 13px; font-weight: 600; color: #3D2C22;">共 <span id="total-dishes">0</span> 道菜</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mt-2 pt-2" style="border-top: 1px dashed #FFE8D6;">
+                    <div class="flex items-center gap-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7A6558" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span style="font-size: 13px; color: #7A6558;">预计用时 <span id="total-time">0</span> 分钟</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mt-2 pt-2" style="border-top: 1px dashed #FFE8D6;">
+                    <div class="flex items-center gap-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7A6558" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        <span style="font-size: 13px; color: #7A6558;">约</span>
+                        <span style="font-size: 18px; font-weight: 700; color: #FF8C42;">¥<span id="total-price">0</span></span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部固定结算栏 -->
+        <div id="checkout-bar" class="fixed left-0 right-0 z-40 bg-white px-3 pt-2 pb-1" style="bottom: 64px; max-width: 480px; margin: 0 auto; border-top: 1.5px solid #FFE8D6; box-shadow: 0 -2px 12px rgba(61, 44, 34, 0.06); display: none;">
+            <button id="checkout-btn" class="checkout-btn" onclick="checkout()">
+                确认下单，开始做饭!
+            </button>
+        </div>
+
+        <!-- 底部导航栏 -->
+        <nav class="bottom-nav">
+            <div class="bottom-nav-inner">
+                <button class="nav-btn" data-nav="home" onclick="navigateTo('home')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 11L12 3L20 11" style="stroke-width: 2.2;"/>
+                        <path d="M6 10V19C6 19.6 6.4 20 7 20H10V15C10 14.4 10.4 14 11 14H13C13.6 14 14 14.4 14 15V20H17C17.6 20 18 19.6 18 19V10"/>
+                        <path d="M2 20L22 20" style="stroke-width: 1.8;"/>
+                    </svg>
+                    <span>首页</span>
+                </button>
+                <button class="nav-btn active" data-nav="cart" onclick="navigateTo('cart')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 7H8.5L10 3H14L12 7H21L19.5 11H17"/>
+                        <path d="M19.5 11L17 20H7L4.5 11"/>
+                        <path d="M9 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M15 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                    <span>购物车</span>
+                </button>
+                <button class="nav-btn" data-nav="nutrition" onclick="navigateTo('nutrition')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 8C17 5 14 3 12 3C10 3 7 5 7 8C7 12 12 17 12 17C12 17 17 12 17 8Z" style="stroke-width: 2;"/>
+                        <path d="M12 17V21" style="stroke-width: 2;"/>
+                        <path d="M10 19L12 17L14 19" style="stroke-width: 1.8;"/>
+                        <path d="M8 6C9 7 10 7.5 10 9" style="stroke-width: 1.6;"/>
+                    </svg>
+                    <span>营养</span>
+                </button>
+                <button class="nav-btn" data-nav="orders" onclick="navigateTo('orders')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <span>接单台</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Toast 提示 -->
+        <div id="toast" class="toast"></div>
+
+        <!-- 确认弹窗 -->
+        <div id="confirm-modal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-title" id="modal-title">确认清空</div>
+                <div class="modal-desc" id="modal-desc">确定要清空购物车吗？</div>
+                <div class="modal-buttons">
+                    <button class="modal-btn modal-btn-cancel" onclick="closeModal()">取消</button>
+                    <button class="modal-btn modal-btn-confirm" onclick="confirmAction()">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/sync.js"></script>
+    <script>
+        let isGroceryExpanded = true;
+        let pendingAction = null;
+
+        function showToast(message, duration = 2000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        function showModal(title, desc, action) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').textContent = desc;
+            pendingAction = action;
+            document.getElementById('confirm-modal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('confirm-modal').classList.remove('show');
+            pendingAction = null;
+        }
+
+        function confirmAction() {
+            if (pendingAction) {
+                pendingAction();
+            }
+            closeModal();
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        function goHome() {
+            navigateTo('home');
+        }
+
+        function navigateTo(page) {
+            const pages = {
+                'home': 'index.html',
+                'cart': 'cart.html',
+                'nutrition': 'nutrition.html',
+                'orders': 'orders.html'
+            };
+            const targetPage = pages[page];
+            if (targetPage) {
+                window.location.href = targetPage;
+            }
+        }
+
+        function renderCartItems() {
+            const container = document.getElementById('cart-items-container');
+            const emptyCart = document.getElementById('empty-cart');
+            const grocerySection = document.getElementById('grocery-section');
+            const orderSummary = document.getElementById('order-summary');
+            const checkoutBar = document.getElementById('checkout-bar');
+            const cartBadge = document.getElementById('cart-badge');
+            const clearCartBtn = document.getElementById('clear-cart-btn');
+
+            const items = cartData.items;
+            const count = cartData.getCount();
+
+            cartBadge.textContent = count;
+            cartBadge.style.display = count > 0 ? 'inline-flex' : 'none';
+
+            if (items.length === 0) {
+                container.innerHTML = '';
+                emptyCart.style.display = 'flex';
+                grocerySection.style.display = 'none';
+                orderSummary.style.display = 'none';
+                checkoutBar.style.display = 'none';
+                clearCartBtn.style.opacity = '0.5';
+                clearCartBtn.style.pointerEvents = 'none';
+                updateCartBadges(false);
+                return;
+            }
+
+            emptyCart.style.display = 'none';
+            grocerySection.style.display = 'block';
+            orderSummary.style.display = 'block';
+            checkoutBar.style.display = 'block';
+            clearCartBtn.style.opacity = '1';
+            clearCartBtn.style.pointerEvents = 'auto';
+
+            let html = '';
+            items.forEach(item => {
+                const dish = item.dish;
+                const mainIngredients = dish.ingredients.filter(i => i.isMain).map(i => i.name).join('、');
+                const hasImage = dish.image && dish.image.trim() !== '';
+
+                html += `
+                    <div class="cart-item-card fade-in">
+                        <div class="flex items-center gap-3">
+                            ${hasImage ? `
+                                <img src="${dish.image}" alt="${dish.name}" style="width: 60px; height: 60px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 1.5px solid #FFE8D6;">
+                            ` : `
+                                <div class="fish-placeholder">
+                                    <svg width="32" height="32" viewBox="0 0 48 48" fill="none" stroke="#6BC5A0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M8 24C8 24 14 14 26 14C34 14 38 18 40 24C38 30 34 34 26 34C14 34 8 24 8 24Z" fill="#6BC5A0" fill-opacity="0.15" stroke="#6BC5A0"/>
+                                        <circle cx="30" cy="21" r="2.5" fill="#6BC5A0" stroke="none"/>
+                                        <path d="M10 24L5 18"/>
+                                        <path d="M10 24L5 30"/>
+                                        <path d="M20 20C22 22 22 26 20 28" stroke-width="1.5" opacity="0.5"/>
+                                        <path d="M25 18C27 22 27 26 25 30" stroke-width="1.5" opacity="0.5"/>
+                                    </svg>
+                                </div>
+                            `}
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+                                    <span style="font-size: 15px; font-weight: 700; color: #3D2C22;">${dish.name}</span>
+                                    <span class="tag-pill tag-default">${dish.region}</span>
+                                    ${dish.spicy ? '<span class="tag-pill tag-spicy">辣</span>' : ''}
+                                </div>
+                                <p style="font-size: 12px; color: #7A6558; margin: 0; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${mainIngredients}</p>
+                                <p style="font-size: 11px; color: #A89588; margin: 3px 0 0 0;">${dish.servings}</p>
+                            </div>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <button class="qty-btn" onclick="decreaseQuantity(${dish.id})">-</button>
+                                <span class="qty-number">${item.quantity}</span>
+                                <button class="qty-btn" onclick="increaseQuantity(${dish.id})">+</button>
+                            </div>
+                            <div class="swipe-hint" onclick="removeItem(${dish.id})" title="删除">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                    <path d="M10 11v6"/>
+                                    <path d="M14 11v6"/>
+                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            updateSummary();
+            renderGroceryList();
+            updateCartBadges(false);
+        }
+
+        function increaseQuantity(dishId) {
+            const item = cartData.items.find(i => i.dish.id === dishId);
+            if (item) {
+                cartData.updateQuantity(dishId, item.quantity + 1);
+                renderCartItems();
+            }
+        }
+
+        function decreaseQuantity(dishId) {
+            const item = cartData.items.find(i => i.dish.id === dishId);
+            if (item && item.quantity > 1) {
+                cartData.updateQuantity(dishId, item.quantity - 1);
+                renderCartItems();
+            } else if (item && item.quantity === 1) {
+                showModal('确认删除', `确定要删除「${item.dish.name}」吗？`, () => {
+                    cartData.removeItem(dishId);
+                    renderCartItems();
+                    showToast('已删除');
+                });
+            }
+        }
+
+        function removeItem(dishId) {
+            const item = cartData.items.find(i => i.dish.id === dishId);
+            if (item) {
+                showModal('确认删除', `确定要删除「${item.dish.name}」吗？`, () => {
+                    cartData.removeItem(dishId);
+                    renderCartItems();
+                    showToast('已删除');
+                });
+            }
+        }
+
+        function clearCart() {
+            if (cartData.items.length === 0) return;
+            showModal('确认清空', '确定要清空购物车吗？清空后无法恢复。', () => {
+                cartData.clear();
+                renderCartItems();
+                showToast('购物车已清空');
+            });
+        }
+
+        function updateSummary() {
+            document.getElementById('total-dishes').textContent = cartData.items.length;
+            document.getElementById('total-time').textContent = cartData.getTotalTime();
+            document.getElementById('total-price').textContent = cartData.getTotal();
+        }
+
+        function renderGroceryList() {
+            const groceryList = cartData.getGroceryList();
+            const container = document.getElementById('grocery-list');
+            const countSpan = document.getElementById('grocery-count');
+
+            countSpan.textContent = `共${groceryList.length}种食材`;
+
+            let html = '';
+            groceryList.forEach(item => {
+                html += `
+                    <div class="grocery-item">
+                        <span class="grocery-dot"></span>
+                        <span>${item.name}</span>
+                        <span style="margin-left: auto; color: #7A6558; font-weight: 500;">${formatAmount(item)}</span>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function formatAmount(item) {
+            const originalIngredients = [];
+            cartData.items.forEach(cartItem => {
+                cartItem.dish.ingredients.forEach(ing => {
+                    if (ing.name === item.name) {
+                        for (let i = 0; i < cartItem.quantity; i++) {
+                            originalIngredients.push(ing.amount);
+                        }
+                    }
+                });
+            });
+
+            if (originalIngredients.length === 0) return '';
+
+            const firstAmount = originalIngredients[0];
+            const allSame = originalIngredients.every(a => a === firstAmount);
+
+            if (allSame && originalIngredients.length === 1) {
+                return firstAmount;
+            }
+
+            if (allSame) {
+                const numMatch = firstAmount.match(/^([\d.]+)/);
+                if (numMatch) {
+                    const num = parseFloat(numMatch[1]);
+                    const unit = firstAmount.replace(numMatch[1], '');
+                    return (num * originalIngredients.length) + unit;
+                }
+            }
+
+            return originalIngredients.join(' + ');
+        }
+
+        function toggleGrocery() {
+            const content = document.getElementById('grocery-content');
+            const chevron = document.getElementById('grocery-chevron');
+            isGroceryExpanded = !isGroceryExpanded;
+            content.classList.toggle('expanded', isGroceryExpanded);
+            chevron.style.transform = isGroceryExpanded ? 'rotate(0deg)' : 'rotate(-90deg)';
+        }
+
+        function copyGroceryList() {
+            const groceryList = cartData.getGroceryList();
+            if (groceryList.length === 0) {
+                showToast('采购清单为空');
+                return;
+            }
+
+            let text = '📝 采购清单\n';
+            text += '━━━━━━━━━━━━\n';
+            groceryList.forEach((item, index) => {
+                text += `${index + 1}. ${item.name} - ${formatAmount(item)}\n`;
+            });
+            text += '━━━━━━━━━━━━';
+            text += `\n共 ${groceryList.length} 种食材`;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('复制成功！');
+                }).catch(() => {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.top = '-9999px';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('复制成功！');
+            } catch (err) {
+                showToast('复制失败，请手动复制');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        async function checkout() {
+            if (cartData.items.length === 0) {
+                showToast('购物车是空的');
+                return;
+            }
+
+            // 收集订单信息
+            const items = cartData.items.map(item => ({
+                name: item.dish.name,
+                quantity: item.quantity,
+                price: item.dish.price
+            }));
+            const total = cartData.getTotal();
+
+            // 提交到云端
+            const btn = document.getElementById('checkout-btn');
+            const originalText = btn ? btn.textContent : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '发送中...';
+            }
+
+            try {
+                await orderSync.submitOrder(items, total, '');
+                // 下单成功后，先把购物车数据存入"今日已下单"，再清空购物车
+                todayOrders.addFromCart(cartData.items);
+                showToast('🎉 下单成功，已通知对方接单！');
+                cartData.clear();
+                renderCartItems();
+                updateCartBadges(false);
+            } catch (e) {
+                let msg = '下单失败';
+                if (e.message.includes('CORS') || e.message.includes('跨域')) {
+                    msg = '网络限制，请用系统浏览器打开';
+                } else if (e.message.includes('404')) {
+                    msg = '连接服务器失败';
+                } else if (e.message.includes('500')) {
+                    msg = '服务器繁忙，请重试';
+                } else {
+                    msg = '下单失败: ' + e.message.substring(0, 30);
+                }
+                showToast(msg);
+                console.error('Order submit error:', e);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            }
+        }
+
+        document.getElementById('clear-cart-btn').addEventListener('click', clearCart);
+
+        document.getElementById('confirm-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        renderCartItems();
+    </script>
+</body>
+</html>

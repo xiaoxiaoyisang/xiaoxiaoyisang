@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今日菜单 - 今天吃什么</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .dish-card {
+            background: #FFFFFF;
+            border: 1.5px solid #FFE8D6;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+            position: relative;
+            box-shadow: 0 2px 6px rgba(61, 44, 34, 0.04);
+        }
+        .dish-card:active {
+            transform: scale(0.985);
+        }
+        .dish-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 16px;
+            border: 1.5px solid transparent;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 4px,
+                rgba(255, 140, 66, 0.06) 4px,
+                rgba(255, 140, 66, 0.06) 5px
+            );
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            -webkit-mask-composite: xor;
+            padding: 1.5px;
+        }
+        .add-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #FF8C42;
+            color: #FFFFFF;
+            border: none;
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            box-shadow: 0 2px 6px rgba(255, 140, 66, 0.3);
+        }
+        .add-btn:hover {
+            animation: bounce-btn 0.4s ease;
+        }
+        .add-btn:active {
+            transform: scale(0.9);
+        }
+        @keyframes bounce-btn {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.25); }
+            50% { transform: scale(0.95); }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .category-tab {
+            flex-shrink: 0;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1.5px solid transparent;
+        }
+        .category-tab.active {
+            background: #FF8C42;
+            color: #FFFFFF;
+            border-color: #FF8C42;
+        }
+        .category-tab.inactive {
+            background: #FFF0E6;
+            color: #7A6558;
+            border-color: #FFE8D6;
+        }
+        .category-tab.inactive:hover {
+            background: #FFE8D6;
+        }
+        .search-bar {
+            background: #FFFFFF;
+            border: 1.5px solid #FFE8D6;
+            border-radius: 12px;
+            padding: 8px 12px 8px 36px;
+            font-size: 14px;
+            color: #3D2C22;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .search-bar::placeholder {
+            color: #C4B5A8;
+        }
+        .search-bar:focus {
+            border-color: #FF8C42;
+            box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.12);
+        }
+        .hero-banner {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1.5px solid #FFE8D6;
+        }
+        .hero-banner img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            display: block;
+        }
+        .hero-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            background: linear-gradient(to top, rgba(61, 44, 34, 0.6), transparent);
+        }
+        .hero-overlay-text {
+            color: #FFFFFF;
+            font-size: 16px;
+            font-weight: 700;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        .dish-img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            display: block;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .fav-heart {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            z-index: 2;
+        }
+        .fav-heart:hover {
+            transform: scale(1.15);
+        }
+        .fav-heart:active {
+            transform: scale(0.9);
+        }
+        .nav-item-active {
+            color: #FF8C42 !important;
+        }
+        .dish-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        @media (min-width: 768px) {
+            .dish-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }
+        }
+        @media (min-width: 1024px) {
+            .dish-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 20px;
+            }
+        }
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(61, 44, 34, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen pb-28" style="background-color: #FFFAF6;">
+
+        <header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm" style="border-bottom: 1.5px solid #FFE8D6;">
+            <div class="flex items-center justify-between px-4 py-3 max-w-md mx-auto md:max-w-3xl lg:max-w-5xl">
+                <div class="w-8 h-8 flex items-center justify-center">
+                    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 14C4 14 5 22 13 22C21 22 22 14 22 14" style="stroke-width: 2.2;"/>
+                        <path d="M10 11C10 9 11 8 10 6" style="stroke-width: 1.8;"/>
+                        <path d="M13 10C13 8 14 7 13 5" style="stroke-width: 1.8;"/>
+                        <path d="M16 11C16 9 17 8 16 6" style="stroke-width: 1.8;"/>
+                        <path d="M3 14H23" style="stroke-width: 2.2;"/>
+                        <line x1="19" y1="2" x2="15" y2="13" style="stroke-width: 1.6; stroke: #6BC5A0;"/>
+                        <line x1="22" y1="1" x2="18" y2="12" style="stroke-width: 1.6; stroke: #6BC5A0;"/>
+                    </svg>
+                </div>
+                <h1 class="text-lg font-bold" style="color: #3D2C22; letter-spacing: 0.5px;">今天吃什么</h1>
+                <a href="orders.html" class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-transform active:scale-90" style="background: linear-gradient(135deg, #FF8C42, #FF6B8A); color: #FFFFFF; text-decoration: none;" title="接单台">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                        <line x1="6" y1="1" x2="6" y2="4"/>
+                        <line x1="10" y1="1" x2="10" y2="4"/>
+                        <line x1="14" y1="1" x2="14" y2="4"/>
+                    </svg>
+                </a>
+            </div>
+        </header>
+
+        <main class="pt-16 px-4 pb-4 max-w-md mx-auto md:max-w-3xl lg:max-w-5xl">
+
+            <div class="sticky-search-category" style="position: sticky; top: 56px; z-index: 40; background: #FFFAF6; padding: 12px 0 8px; margin-top: 8px; margin-bottom: 12px; border-bottom: 1px solid #FFE8D6;">
+                <div class="relative mb-2.5">
+                    <div class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C4B5A8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="7"/>
+                            <path d="M21 21L16.65 16.65"/>
+                        </svg>
+                    </div>
+                    <input type="text" id="searchInput" class="search-bar" placeholder="搜索菜品..." />
+                </div>
+
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1" style="scroll-snap-type: x mandatory;">
+                    <button class="category-tab active" data-category="all">全部</button>
+                    <button class="category-tab inactive" data-category="meat">荤菜</button>
+                    <button class="category-tab inactive" data-category="veggie">素菜</button>
+                    <button class="category-tab inactive" data-category="soup">汤</button>
+                    <button class="category-tab inactive" data-category="staple">主食</button>
+                    <button class="category-tab inactive" data-category="snack">小吃</button>
+                </div>
+            </div>
+
+            <div class="hero-banner mb-5">
+                <img src="assets/image_0_yi19x4.jpg" alt="今晚一起做饭吧" />
+                <div class="hero-overlay">
+                    <span class="hero-overlay-text">今晚一起做饭吧</span>
+                </div>
+            </div>
+
+            <div id="dishGrid" class="dish-grid">
+            </div>
+
+        </main>
+
+        <nav class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t-2" style="border-color: #FF8C42; padding-bottom: env(safe-area-inset-bottom, 0px);">
+            <div class="flex items-center justify-around max-w-md mx-auto md:max-w-3xl lg:max-w-5xl px-2 pt-1 pb-1">
+                <button
+                    data-nav-key="home"
+                    class="flex flex-col items-center gap-0.5 py-1 px-4 rounded-full transition-colors duration-200 nav-item-active"
+                    onclick="window.location.href='index.html'"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 11L12 3L20 11" style="stroke-width: 2.2;"/>
+                        <path d="M6 10V19C6 19.6 6.4 20 7 20H10V15C10 14.4 10.4 14 11 14H13C13.6 14 14 14.4 14 15V20H17C17.6 20 18 19.6 18 19V10"/>
+                        <path d="M2 20L22 20" style="stroke-width: 1.8;"/>
+                    </svg>
+                    <span class="text-xs leading-tight" style="font-weight: 600;">首页</span>
+                </button>
+
+                <button
+                    data-nav-key="cart"
+                    class="flex flex-col items-center gap-0.5 py-1 px-4 rounded-full transition-colors duration-200"
+                    style="color: #B0A090;"
+                    onclick="window.location.href='cart.html'"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 7H8.5L10 3H14L12 7H21L19.5 11H17"/>
+                        <path d="M19.5 11L17 20H7L4.5 11"/>
+                        <path d="M9 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M15 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                    <span class="text-xs leading-tight" style="font-weight: 600;">购物车</span>
+                </button>
+
+                <button
+                    data-nav-key="nutrition"
+                    class="flex flex-col items-center gap-0.5 py-1 px-4 rounded-full transition-colors duration-200"
+                    style="color: #B0A090;"
+                    onclick="window.location.href='nutrition.html'"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 8C17 5 14 3 12 3C10 3 7 5 7 8C7 12 12 17 12 17C12 17 17 12 17 8Z" style="stroke-width: 2;"/>
+                        <path d="M12 17V21" style="stroke-width: 2;"/>
+                        <path d="M10 19L12 17L14 19" style="stroke-width: 1.8;"/>
+                        <path d="M8 6C9 7 10 7.5 10 9" style="stroke-width: 1.6;"/>
+                    </svg>
+                    <span class="text-xs leading-tight" style="font-weight: 600;">营养</span>
+                </button>
+
+                <button
+                    data-nav-key="orders"
+                    class="flex flex-col items-center gap-0.5 py-1 px-4 rounded-full transition-colors duration-200"
+                    style="color: #B0A090;"
+                    onclick="window.location.href='orders.html'"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" style="stroke-width: 2;"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" style="stroke-width: 2;"/>
+                    </svg>
+                    <span class="text-xs leading-tight" style="font-weight: 600;">接单台</span>
+                </button>
+            </div>
+        </nav>
+
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script>
+        let currentCategory = 'all';
+        let searchKeyword = '';
+
+        function formatTime(timeStr) {
+            return timeStr.replace('分钟', 'min');
+        }
+
+        function renderDishes() {
+            const grid = document.getElementById('dishGrid');
+            let filtered = allDishes;
+
+            if (currentCategory !== 'all') {
+                filtered = filtered.filter(d => d.category === currentCategory);
+            }
+
+            if (searchKeyword) {
+                const kw = searchKeyword.toLowerCase();
+                filtered = filtered.filter(d =>
+                    d.name.toLowerCase().includes(kw) ||
+                    d.region.toLowerCase().includes(kw)
+                );
+            }
+
+            grid.innerHTML = filtered.map(dish => {
+                const timeStr = formatTime(dish.time);
+                const tags = [];
+                tags.push(`<span class="tag-pill tag-default">${dish.region}</span>`);
+                tags.push(`<span class="tag-pill tag-time">${timeStr}</span>`);
+                if (dish.difficulty) {
+                    tags.push(`<span class="tag-pill tag-difficulty">${dish.difficulty}</span>`);
+                }
+                if (dish.spicy) {
+                    tags.push(`<span class="tag-pill tag-spicy">辣</span>`);
+                }
+
+                const heartFill = dish.favorite ? '#FF6B8A' : 'none';
+                const heartStroke = dish.favorite ? '#FF6B8A' : '#B0A090';
+
+                return `
+                    <div class="dish-card cursor-pointer" data-id="${dish.id}" data-category="${dish.category}" onclick="goToDish(${dish.id})">
+                        <div class="relative" style="border-radius: 16px 16px 0 0; overflow: hidden;">
+                            <img src="${dish.image}" alt="${dish.name}" class="dish-img" />
+                            <div class="fav-heart" onclick="event.stopPropagation(); toggleFavorite(${dish.id})">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="${heartFill}" stroke="${heartStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="text-sm font-bold mb-2" style="color: #3D2C22;">${dish.name}</h3>
+                            <div class="flex flex-wrap gap-1 mb-2">
+                                ${tags.join('')}
+                            </div>
+                            <div class="flex justify-end">
+                                <button class="add-btn" onclick="event.stopPropagation(); addToCart(${dish.id})">+</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function goToDish(id) {
+            window.location.href = `dish.html?id=${id}`;
+        }
+
+        function addToCart(id) {
+            const dish = allDishes.find(d => d.id === id);
+            if (dish) {
+                cartData.addItem(dish, 1);
+                showToast(`已添加 ${dish.name} 到购物车`);
+                updateCartBadges(true);
+            }
+        }
+
+        function toggleFavorite(id) {
+            const dish = allDishes.find(d => d.id === id);
+            if (dish) {
+                dish.favorite = !dish.favorite;
+                const favs = allDishes.filter(d => d.favorite).map(d => d.id);
+                localStorage.setItem('favorites', JSON.stringify(favs));
+                renderDishes();
+                showToast(dish.favorite ? `已收藏 ${dish.name}` : `已取消收藏 ${dish.name}`);
+            }
+        }
+
+        function loadFavorites() {
+            const saved = localStorage.getItem('favorites');
+            if (saved) {
+                const favIds = JSON.parse(saved);
+                allDishes.forEach(d => {
+                    d.favorite = favIds.includes(d.id);
+                });
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 1500);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFavorites();
+            renderDishes();
+
+            const tabs = document.querySelectorAll('.category-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const category = this.getAttribute('data-category');
+                    currentCategory = category;
+
+                    tabs.forEach(t => {
+                        t.classList.remove('active');
+                        t.classList.add('inactive');
+                    });
+                    this.classList.remove('inactive');
+                    this.classList.add('active');
+
+                    renderDishes();
+
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            });
+
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', function() {
+                searchKeyword = this.value.trim();
+                renderDishes();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
+    </script>
+</body>
+</html>

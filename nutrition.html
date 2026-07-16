@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>营养计算 - 今天吃什么</title>
+  <link rel="stylesheet" href="css/common.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .calorie-ring {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: conic-gradient(
+        #FF8C42 0deg 0deg,
+        #F0E8E0 0deg 360deg
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 1s ease-out;
+    }
+    .calorie-ring::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2.5px solid rgba(61, 44, 34, 0.06);
+      transform: rotate(-1deg);
+    }
+    .calorie-ring::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 48%;
+      border: 2px dashed rgba(255, 140, 66, 0.15);
+    }
+    .calorie-ring-center {
+      width: 148px;
+      height: 148px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(61, 44, 34, 0.06);
+    }
+
+    @keyframes barGrow {
+      from { width: 0%; }
+    }
+    .macro-bar-fill {
+      animation: barGrow 0.8s ease-out forwards;
+    }
+
+    .dish-detail-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease;
+    }
+    .dish-detail-content.expanded {
+      max-height: 500px;
+    }
+    .dish-expand-icon {
+      transition: transform 0.3s ease;
+    }
+    .dish-expand-icon.rotated {
+      transform: rotate(180deg);
+    }
+
+    .squiggle-decoration {
+      opacity: 0.12;
+    }
+
+    .meal-card {
+      border-left: 5px solid;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="min-h-screen pb-24" style="background-color: var(--color-bg);">
+
+    <!-- Top Header Bar -->
+    <header class="top-header">
+      <div class="top-header-inner">
+        <button onclick="history.back()" class="back-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3D2C22" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18L9 12L15 6"/>
+          </svg>
+        </button>
+        <div class="flex items-center gap-1.5">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6BC5A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22C12 22 4 16 4 10C4 5.6 7.6 2 12 2C16.4 2 20 5.6 20 10C20 16 12 22 12 22Z"/>
+            <path d="M12 10V16"/>
+            <path d="M9 7C10 8 12 7 12 10"/>
+          </svg>
+          <span class="text-base font-semibold" style="color: var(--color-text-primary);">营养计算</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="currentDate" class="text-xs font-medium" style="color: var(--color-text-tertiary);"></span>
+          <a href="orders.html" class="w-8 h-8 rounded-full flex items-center justify-center transition-transform active:scale-90" style="background: linear-gradient(135deg, #FF8C42, #FF6B8A); color: #FFFFFF; text-decoration: none;" title="接单台">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <div class="h-14"></div>
+
+    <!-- Main scrollable content -->
+    <main class="container pt-3 pb-6 space-y-5">
+
+      <!-- Daily Calorie Overview Card -->
+      <section class="card p-5 relative overflow-hidden">
+        <svg class="squiggle-decoration absolute top-2 right-3" width="60" height="24" viewBox="0 0 60 24" fill="none">
+          <path d="M2 12C8 6 14 18 20 12C26 6 32 18 38 12C44 6 50 18 56 12" stroke="#FF8C42" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+
+        <h3 class="text-sm font-semibold mb-4 flex items-center gap-1.5" style="color: var(--color-text-primary);">
+          <span>🔥</span> 今日能量
+        </h3>
+
+        <div class="flex justify-center mb-4">
+          <div id="calorieRing" class="calorie-ring">
+            <div class="calorie-ring-center">
+              <span id="caloriesValue" class="text-3xl font-bold" style="color: var(--color-primary);">0</span>
+              <span class="text-xs mt-0.5" style="color: var(--color-text-tertiary);">kcal 已摄入</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-center text-xs font-medium" style="color: var(--color-text-secondary);">目标 <span id="targetCalories">2200</span> kcal</p>
+
+        <div class="mt-3 text-center">
+          <span id="calorieDiff" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style="background: var(--color-primary-light); color: var(--color-primary);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5V19M5 12H19"/>
+            </svg>
+            还差 <span id="remainingCalories">2200</span> kcal 达标
+          </span>
+        </div>
+      </section>
+
+      <!-- Macronutrient Breakdown -->
+      <section class="card p-5">
+        <h3 class="text-sm font-semibold mb-4 flex items-center gap-1.5" style="color: var(--color-text-primary);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6B8A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="18" rx="1"/>
+            <rect x="14" y="8" width="7" height="13" rx="1"/>
+          </svg>
+          营养素分布
+        </h3>
+
+        <div class="space-y-4">
+          <!-- Protein -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color: var(--color-text-primary);">蛋白质</span>
+              <span class="text-xs" style="color: var(--color-text-secondary);"><span id="proteinValue">0</span>g / 80g</span>
+            </div>
+            <div class="w-full h-3 rounded-full" style="background: var(--color-primary-light);">
+              <div id="proteinBar" class="macro-bar-fill h-full rounded-full" style="width: 0%; background: linear-gradient(90deg, #FF8C42, #FFAA70);"></div>
+            </div>
+            <span id="proteinPercent" class="text-xs font-medium mt-1 inline-block" style="color: var(--color-primary);">0%</span>
+          </div>
+
+          <!-- Carbs -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color: var(--color-text-primary);">碳水化合物</span>
+              <span class="text-xs" style="color: var(--color-text-secondary);"><span id="carbsValue">0</span>g / 250g</span>
+            </div>
+            <div class="w-full h-3 rounded-full" style="background: var(--color-secondary-light);">
+              <div id="carbsBar" class="macro-bar-fill h-full rounded-full" style="width: 0%; background: linear-gradient(90deg, #6BC5A0, #8FD9BA);"></div>
+            </div>
+            <span id="carbsPercent" class="text-xs font-medium mt-1 inline-block" style="color: var(--color-secondary);">0%</span>
+          </div>
+
+          <!-- Fat -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color: var(--color-text-primary);">脂肪</span>
+              <span class="text-xs" style="color: var(--color-text-secondary);"><span id="fatValue">0</span>g / 60g</span>
+            </div>
+            <div class="w-full h-3 rounded-full" style="background: var(--color-accent-light);">
+              <div id="fatBar" class="macro-bar-fill h-full rounded-full" style="width: 0%; background: linear-gradient(90deg, #FF6B8A, #FF8FA5);"></div>
+            </div>
+            <span id="fatPercent" class="text-xs font-medium mt-1 inline-block" style="color: var(--color-accent);">0%</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Meal Breakdown -->
+      <section>
+        <h3 class="text-sm font-semibold mb-3 flex items-center gap-1.5 px-1" style="color: var(--color-text-primary);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8H6V20C6 21.1 6.9 22 8 22H16C17.1 22 18 21.1 18 20V8Z"/>
+            <path d="M3 8H21"/>
+            <path d="M8 8V5C8 3.9 8.9 3 10 3H14C15.1 3 16 3.9 16 5V8"/>
+          </svg>
+          分餐统计
+        </h3>
+
+        <div class="space-y-3">
+          <!-- Lunch card -->
+          <div id="lunchCard" class="card p-4 meal-card" style="border-left-color: var(--color-primary);">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background: var(--color-primary-light);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="4"/>
+                  <path d="M12 2V4"/>
+                  <path d="M12 20V22"/>
+                  <path d="M4.93 4.93L6.34 6.34"/>
+                  <path d="M17.66 17.66L19.07 19.07"/>
+                  <path d="M2 12H4"/>
+                  <path d="M20 12H22"/>
+                  <path d="M6.34 17.66L4.93 19.07"/>
+                  <path d="M19.07 4.93L17.66 6.34"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-semibold" style="color: var(--color-text-primary);">午餐</h4>
+                  <span id="lunchCalories" class="text-sm font-bold" style="color: var(--color-primary);">0 kcal</span>
+                </div>
+                <div id="lunchItems" class="mt-1.5 space-y-1">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dinner card -->
+          <div id="dinnerCard" class="card p-4 meal-card" style="border-left-color: var(--color-accent);">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background: var(--color-accent-light);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF6B8A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+                  <path d="M14 9C14 7.9 13.1 7 12 7C10.9 7 10 7.9 10 9"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-semibold" style="color: var(--color-text-primary);">晚餐</h4>
+                  <span id="dinnerCalories" class="text-sm font-bold" style="color: var(--color-accent);">0 kcal</span>
+                </div>
+                <div id="dinnerItems" class="mt-1.5 space-y-1">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Snacks card -->
+          <div id="snacksCard" class="card p-4 meal-card" style="border-left-color: var(--color-secondary);">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background: var(--color-secondary-light);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6BC5A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2C9.5 2 7 4 7 7.5C7 11 12 17 12 17C12 17 17 11 17 7.5C17 4 14.5 2 12 2Z"/>
+                  <path d="M12 17C9.5 19 7 21 7 22H17C17 21 14.5 19 12 17Z"/>
+                  <path d="M10 7C11 8 12 7.5 12 6"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-semibold" style="color: var(--color-text-primary);">加餐</h4>
+                  <span id="snacksCalories" class="text-sm font-bold" style="color: var(--color-secondary);">0 kcal</span>
+                </div>
+                <div id="snacksItems" class="mt-1.5 space-y-1">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Per-Dish Nutrition Detail -->
+      <section>
+        <h3 class="text-sm font-semibold mb-3 flex items-center gap-1.5 px-1" style="color: var(--color-text-primary);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6BC5A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7H20"/>
+            <path d="M4 12H20"/>
+            <path d="M4 17H20"/>
+            <circle cx="8" cy="7" r="1.5" fill="#6BC5A0"/>
+            <circle cx="8" cy="12" r="1.5" fill="#FF8C42"/>
+            <circle cx="8" cy="17" r="1.5" fill="#FF6B8A"/>
+          </svg>
+          菜品营养明细
+        </h3>
+
+        <div id="dishList" class="space-y-2.5">
+        </div>
+      </section>
+
+      <!-- Health Tips Card -->
+      <section class="rounded-2xl p-4 relative overflow-hidden" style="background: linear-gradient(135deg, #E8F8F1, #F2FBF7); border: 1.5px solid #D4F0E3;">
+        <svg class="absolute top-2 right-3 squiggle-decoration" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6BC5A0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/>
+        </svg>
+
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background: #D4F0E3;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6BC5A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18H5C4.4 18 4 17.6 4 17V7C4 6.4 4.4 6 5 6H9"/>
+              <path d="M15 6H19C19.6 6 20 6.4 20 7V17C20 17.6 19.6 18 19 18H15"/>
+              <path d="M9 12H15"/>
+              <path d="M12 9V15"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold mb-1" style="color: var(--color-text-primary);">健康小贴士</h3>
+            <p id="healthTip" class="text-xs leading-relaxed" style="color: var(--color-text-secondary);">
+              建议均衡饮食，多摄入蛋白质和蔬菜水果，保持健康的生活方式。
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner">
+        <button onclick="navigateTo('index.html')" class="nav-btn" data-nav-key="home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 11L12 3L20 11" style="stroke-width: 2.2;"/>
+            <path d="M6 10V19C6 19.6 6.4 20 7 20H10V15C10 14.4 10.4 14 11 14H13C13.6 14 14 14.4 14 15V20H17C17.6 20 18 19.6 18 19V10"/>
+            <path d="M2 20L22 20" style="stroke-width: 1.8;"/>
+          </svg>
+          <span>首页</span>
+        </button>
+
+        <button onclick="navigateTo('cart.html')" class="nav-btn" data-nav-key="cart">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 7H8.5L10 3H14L12 7H21L19.5 11H17"/>
+            <path d="M19.5 11L17 20H7L4.5 11"/>
+            <path d="M9 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M15 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <span>购物车</span>
+        </button>
+
+        <button class="nav-btn active" data-nav-key="nutrition">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 8C17 5 14 3 12 3C10 3 7 5 7 8C7 12 12 17 12 17C12 17 17 12 17 8Z" style="stroke-width: 2;"/>
+            <path d="M12 17V21" style="stroke-width: 2;"/>
+            <path d="M10 19L12 17L14 19" style="stroke-width: 1.8;"/>
+            <path d="M8 6C9 7 10 7.5 10 9" style="stroke-width: 1.6;"/>
+          </svg>
+          <span>营养</span>
+        </button>
+
+        <button onclick="navigateTo('orders.html')" class="nav-btn" data-nav-key="orders">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span>接单台</span>
+        </button>
+      </div>
+    </nav>
+
+  </div>
+
+  <script src="js/data.js"></script>
+  <script>
+    const TARGET_CALORIES = 2200;
+    const TARGET_PROTEIN = 80;
+    const TARGET_CARBS = 250;
+    const TARGET_FAT = 60;
+
+    const sampleDishes = [
+      { id: 1, name: '东北红烧肉', calories: 580, protein: 32, carbs: 15, fat: 45, fiber: 6, sodium: 890, category: 'meat', meal: 'lunch' },
+      { id: 47, name: '蛋炒饭', calories: 350, protein: 10, carbs: 50, fat: 12, fiber: 1, sodium: 420, category: 'staple', meal: 'lunch' },
+      { id: 19, name: '衢州三头一掌', calories: 380, protein: 30, carbs: 8, fat: 25, fiber: 2, sodium: 1240, category: 'meat', meal: 'dinner' },
+      { id: 11, name: '糖醋鲤鱼', calories: 380, protein: 28, carbs: 35, fat: 12, fiber: 1, sodium: 680, category: 'meat', meal: 'dinner' },
+      { id: 47, name: '米饭', calories: 232, protein: 5, carbs: 50, fat: 1, fiber: 1, sodium: 5, category: 'staple', meal: 'dinner' },
+      { id: 9, name: '水果', calories: 80, protein: 1, carbs: 20, fat: 0, fiber: 3, sodium: 5, category: 'snack', meal: 'snacks' }
+    ];
+
+    const healthTips = [
+      '今天的蛋白质摄入不错！建议晚餐可以搭配一份蔬菜，补充维生素和膳食纤维。',
+      '碳水化合物摄入适中，注意选择全谷物类食物，能提供更持久的能量。',
+      '脂肪摄入量略高，建议减少油炸食品，选择更健康的烹饪方式如蒸、煮、烤。',
+      '热量摄入达标啦！注意保持均衡饮食，多吃蔬菜水果。',
+      '今天的膳食纤维摄入偏少，建议多吃绿叶蔬菜和全谷物。',
+      '钠摄入有点多哦，建议饮食清淡一些，减少盐的摄入。'
+    ];
+
+    function formatDate() {
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      return `${month}月${day}日`;
+    }
+
+    function getDishItems() {
+      // 始终以购物车实际数据为准，购物车为空时返回空数组（不再回退到示例数据）
+      return cartData.items.map(item => ({
+        ...item.dish,
+        quantity: item.quantity,
+        meal: assignMeal(item.dish),
+        ordered: false
+      }));
+    }
+
+    function getOrderedItems() {
+      // 今日已下单的菜品（下单后保留，便于查看当日营养总和）
+      return todayOrders.items.map(item => ({
+        ...item.dish,
+        quantity: item.quantity,
+        meal: assignMeal(item.dish),
+        ordered: true
+      }));
+    }
+
+    function assignMeal(dish) {
+      if (dish.category === 'snack' || dish.category === 'soup') return 'snacks';
+      if (dish.category === 'staple') return 'lunch';
+      return Math.random() > 0.5 ? 'lunch' : 'dinner';
+    }
+
+    function calculateNutrition(dishes) {
+      const nutrition = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 };
+      dishes.forEach(dish => {
+        const qty = dish.quantity || 1;
+        nutrition.calories += dish.calories * qty;
+        nutrition.protein += dish.protein * qty;
+        nutrition.carbs += dish.carbs * qty;
+        nutrition.fat += dish.fat * qty;
+        nutrition.fiber += (dish.fiber || 0) * qty;
+        nutrition.sodium += (dish.sodium || 0) * qty;
+      });
+      return nutrition;
+    }
+
+    function animateNumber(element, target, duration = 1000) {
+      const start = 0;
+      const startTime = performance.now();
+      
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const current = Math.floor(start + (target - start) * easeOut);
+        element.textContent = current.toLocaleString();
+        
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+      
+      requestAnimationFrame(update);
+    }
+
+    function updateCalorieRing(percentage) {
+      const ring = document.getElementById('calorieRing');
+      const degrees = Math.min(percentage / 100 * 360, 360);
+      ring.style.background = `conic-gradient(#FF8C42 0deg ${degrees}deg, #F0E8E0 ${degrees}deg 360deg)`;
+    }
+
+    function updateMacroBar(barId, percentId, valueId, current, target, color) {
+      const percentage = Math.min((current / target) * 100, 100);
+      const bar = document.getElementById(barId);
+      const percent = document.getElementById(percentId);
+      const value = document.getElementById(valueId);
+      
+      setTimeout(() => {
+        bar.style.width = percentage + '%';
+      }, 200);
+      
+      percent.textContent = Math.round(percentage) + '%';
+      value.textContent = Math.round(current);
+    }
+
+    function renderMealItems(containerId, dishes, mealType) {
+      const container = document.getElementById(containerId);
+      const mealDishes = dishes.filter(d => d.meal === mealType);
+      
+      if (mealDishes.length === 0) {
+        container.innerHTML = '<div class="text-xs" style="color: var(--color-text-tertiary);">暂无菜品</div>';
+        return;
+      }
+      
+      container.innerHTML = mealDishes.map(dish => {
+        const qty = dish.quantity || 1;
+        const totalCal = dish.calories * qty;
+        const name = qty > 1 ? `${dish.name} x${qty}` : dish.name;
+        return `
+          <div class="flex items-center justify-between">
+            <span class="text-xs" style="color: var(--color-text-secondary);">${name}</span>
+            <span class="text-xs" style="color: var(--color-text-tertiary);">${totalCal} kcal</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getMealCalories(dishes, mealType) {
+      return dishes
+        .filter(d => d.meal === mealType)
+        .reduce((sum, d) => sum + d.calories * (d.quantity || 1), 0);
+    }
+
+    function renderDishList(dishes) {
+      const container = document.getElementById('dishList');
+      const colors = ['#FF8C42', '#FF6B8A', '#6BC5A0', '#FFB74D', '#42A5F5'];
+      
+      container.innerHTML = dishes.map((dish, index) => {
+        const color = colors[index % colors.length];
+        const qty = dish.quantity || 1;
+        const totalCal = dish.calories * qty;
+        const name = qty > 1 ? `${dish.name} x${qty}` : dish.name;
+        const expanded = index === 0 ? 'expanded' : '';
+        const rotated = index === 0 ? 'rotated' : '';
+        const orderTag = dish.ordered
+          ? '<span style="font-size:10px;padding:2px 6px;background:#E8F5E9;color:#6BC5A0;border-radius:6px;margin-left:6px;font-weight:600;">已下单</span>'
+          : '<span style="font-size:10px;padding:2px 6px;background:#FFF0E6;color:#FF8C42;border-radius:6px;margin-left:6px;font-weight:600;">待下单</span>';
+
+        return `
+          <div class="card overflow-hidden">
+            <button onclick="toggleDish('dish-${dish.id}-${index}', this)" class="w-full flex items-center justify-between px-4 py-3 text-left">
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full" style="background: ${color};"></div>
+                <span class="text-sm font-semibold" style="color: var(--color-text-primary);">${name}</span>
+                ${orderTag}
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium" style="color: ${color};">${totalCal} kcal</span>
+                <svg class="dish-expand-icon ${rotated}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A89588" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9L12 15L18 9"/>
+                </svg>
+              </div>
+            </button>
+            <div id="dish-${dish.id}-${index}" class="dish-detail-content ${expanded}" style="border-top: 1px solid var(--color-border);">
+              <div class="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs" style="color: var(--color-text-secondary);">热量</span>
+                  <span class="text-xs font-semibold" style="color: var(--color-text-primary);">${totalCal} kcal</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs" style="color: var(--color-text-secondary);">蛋白质</span>
+                  <span class="text-xs font-semibold" style="color: var(--color-primary);">${Math.round(dish.protein * qty)}g</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs" style="color: var(--color-text-secondary);">碳水</span>
+                  <span class="text-xs font-semibold" style="color: var(--color-secondary);">${Math.round(dish.carbs * qty)}g</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs" style="color: var(--color-text-secondary);">脂肪</span>
+                  <span class="text-xs font-semibold" style="color: var(--color-accent);">${Math.round(dish.fat * qty)}g</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs" style="color: var(--color-text-secondary);">膳食纤维</span>
+                  <span class="text-xs font-semibold" style="color: var(--color-text-primary);">${Math.round((dish.fiber || 0) * qty)}g</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs" style="color: var(--color-text-secondary);">钠</span>
+                  <span class="text-xs font-semibold" style="color: var(--color-text-primary);">${Math.round((dish.sodium || 0) * qty)}mg</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleDish(id, btn) {
+      const content = document.getElementById(id);
+      const icon = btn.querySelector('.dish-expand-icon');
+      content.classList.toggle('expanded');
+      icon.classList.toggle('rotated');
+    }
+
+    function updateHealthTip(nutrition) {
+      const tipElement = document.getElementById('healthTip');
+      let tipIndex = 0;
+      
+      if (nutrition.protein / TARGET_PROTEIN > 0.8) {
+        tipIndex = 0;
+      } else if (nutrition.carbs / TARGET_CARBS > 0.7) {
+        tipIndex = 1;
+      } else if (nutrition.fat / TARGET_FAT > 0.9) {
+        tipIndex = 2;
+      } else if (nutrition.calories / TARGET_CALORIES > 0.9) {
+        tipIndex = 3;
+      } else if (nutrition.fiber < 10) {
+        tipIndex = 4;
+      } else if (nutrition.sodium > 2000) {
+        tipIndex = 5;
+      } else {
+        tipIndex = Math.floor(Math.random() * healthTips.length);
+      }
+      
+      tipElement.textContent = healthTips[tipIndex];
+    }
+
+    function navigateTo(page) {
+      window.location.href = page;
+    }
+
+    function renderEmptyState() {
+      document.getElementById('caloriesValue').textContent = '0';
+      updateCalorieRing(0);
+      document.getElementById('targetCalories').textContent = TARGET_CALORIES.toLocaleString();
+      document.getElementById('remainingCalories').textContent = TARGET_CALORIES.toLocaleString();
+
+      ['proteinBar', 'carbsBar', 'fatBar'].forEach(id => document.getElementById(id).style.width = '0%');
+      ['proteinPercent', 'carbsPercent', 'fatPercent'].forEach(id => document.getElementById(id).textContent = '0%');
+      ['proteinValue', 'carbsValue', 'fatValue'].forEach(id => document.getElementById(id).textContent = '0');
+
+      ['lunchItems', 'dinnerItems', 'snacksItems'].forEach(id => {
+        document.getElementById(id).innerHTML = '<div class="text-xs" style="color: var(--color-text-tertiary);">暂无菜品</div>';
+      });
+      document.getElementById('lunchCalories').textContent = '0 kcal';
+      document.getElementById('dinnerCalories').textContent = '0 kcal';
+      document.getElementById('snacksCalories').textContent = '0 kcal';
+
+      document.getElementById('dishList').innerHTML = '<div class="card p-5 text-center text-xs" style="color: var(--color-text-tertiary);">今天还没点菜，去首页添加几道菜看看营养吧～</div>';
+      document.getElementById('healthTip').textContent = '今日还未点单，添加菜品后会自动计算营养摄入。';
+    }
+
+    function init() {
+      document.getElementById('currentDate').textContent = formatDate();
+
+      // 每次进入页面都重新从 localStorage 读取最新购物车和今日已下单数据
+      cartData.load();
+      todayOrders.load();
+
+      // 合并购物车菜品 + 今日已下单菜品
+      const cartDishes = getDishItems();
+      const orderedDishes = getOrderedItems();
+      const dishes = [...cartDishes, ...orderedDishes];
+
+      if (dishes.length === 0) {
+        renderEmptyState();
+        return;
+      }
+
+      const nutrition = calculateNutrition(dishes);
+
+      const caloriePercentage = (nutrition.calories / TARGET_CALORIES) * 100;
+      animateNumber(document.getElementById('caloriesValue'), Math.round(nutrition.calories));
+      setTimeout(() => updateCalorieRing(caloriePercentage), 100);
+
+      document.getElementById('targetCalories').textContent = TARGET_CALORIES.toLocaleString();
+      const remaining = Math.max(TARGET_CALORIES - Math.round(nutrition.calories), 0);
+      document.getElementById('remainingCalories').textContent = remaining.toLocaleString();
+
+      updateMacroBar('proteinBar', 'proteinPercent', 'proteinValue', nutrition.protein, TARGET_PROTEIN, 'primary');
+      updateMacroBar('carbsBar', 'carbsPercent', 'carbsValue', nutrition.carbs, TARGET_CARBS, 'secondary');
+      updateMacroBar('fatBar', 'fatPercent', 'fatValue', nutrition.fat, TARGET_FAT, 'accent');
+
+      renderMealItems('lunchItems', dishes, 'lunch');
+      renderMealItems('dinnerItems', dishes, 'dinner');
+      renderMealItems('snacksItems', dishes, 'snacks');
+
+      document.getElementById('lunchCalories').textContent = getMealCalories(dishes, 'lunch') + ' kcal';
+      document.getElementById('dinnerCalories').textContent = getMealCalories(dishes, 'dinner') + ' kcal';
+      document.getElementById('snacksCalories').textContent = getMealCalories(dishes, 'snacks') + ' kcal';
+
+      renderDishList(dishes);
+
+      updateHealthTip(nutrition);
+    }
+
+    // 使用 pageshow 而非 DOMContentLoaded，确保从 cart.html 返回时（含 bfcache 恢复）能刷新数据
+    window.addEventListener('pageshow', init);
+  </script>
+
+</body>
+</html>

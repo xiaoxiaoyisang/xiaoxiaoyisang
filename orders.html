@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>接单台 - 今天吃什么</title>
+  <link rel="stylesheet" href="css/common.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .order-card {
+      background: #FFFFFF;
+      border: 1.5px solid #FFE8D6;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(61, 44, 34, 0.04);
+    }
+    .order-card.pending {
+      border-color: #FF8C42;
+      box-shadow: 0 4px 14px rgba(255, 140, 66, 0.15);
+    }
+    .order-card.done {
+      opacity: 0.65;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .status-pending {
+      background: #FFF0E6;
+      color: #FF8C42;
+    }
+    .status-done {
+      background: #E8F8F1;
+      color: #6BC5A0;
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(255, 107, 138, 0.6); }
+      70% { box-shadow: 0 0 0 14px rgba(255, 107, 138, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 107, 138, 0); }
+    }
+    .new-order-pulse {
+      animation: pulse-ring 1.2s ease-out;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6BC5A0;
+      display: inline-block;
+    }
+    .conn-dot.offline {
+      background: #FF6B8A;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="min-h-screen pb-24" style="background-color: var(--color-bg);">
+
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="top-header-inner">
+        <button onclick="window.location.href='index.html'" class="back-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3D2C22" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18L9 12L15 6"/>
+          </svg>
+        </button>
+        <div class="flex items-center gap-1.5">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+            <line x1="6" y1="1" x2="6" y2="4"/>
+            <line x1="10" y1="1" x2="10" y2="4"/>
+            <line x1="14" y1="1" x2="14" y2="4"/>
+          </svg>
+          <span class="text-base font-semibold" style="color: var(--color-text-primary);">接单台</span>
+        </div>
+        <button onclick="toggleSettings()" class="back-btn" title="设置">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D2C22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="h-14"></div>
+
+    <main class="container pt-3 pb-6 space-y-4">
+
+      <!-- 统计栏 -->
+      <section class="card p-4">
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <div id="pendingCount" class="text-2xl font-bold" style="color: #FF8C42;">0</div>
+            <div class="text-xs mt-0.5" style="color: var(--color-text-tertiary);">待接单</div>
+          </div>
+          <div>
+            <div id="doneCount" class="text-2xl font-bold" style="color: #6BC5A0;">0</div>
+            <div class="text-xs mt-0.5" style="color: var(--color-text-tertiary);">已完成</div>
+          </div>
+          <div>
+            <div id="todayCount" class="text-2xl font-bold" style="color: #FF6B8A;">0</div>
+            <div class="text-xs mt-0.5" style="color: var(--color-text-tertiary);">今日订单</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 操作栏 -->
+      <div class="flex items-center justify-between px-1">
+        <h3 class="text-sm font-semibold flex items-center gap-1.5" style="color: var(--color-text-primary);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+          </svg>
+          订单列表
+          <span id="liveBadge" class="text-xs font-normal" style="color: var(--color-text-tertiary);">· 实时刷新</span>
+        </h3>
+        <div class="flex items-center gap-2">
+          <button onclick="manualRefresh()" id="refreshBtn" class="w-7 h-7 rounded-full flex items-center justify-center" style="background: #F5F0EB; color: #7A6558;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+          </button>
+          <button onclick="clearFinishedOrders()" class="text-xs font-medium px-3 py-1.5 rounded-full" style="background: #F5F0EB; color: #7A6558;">
+            清理已完成
+          </button>
+        </div>
+      </div>
+
+      <!-- 配对码提示 -->
+      <div class="flex items-center justify-between px-1 mt-2 mb-2">
+        <span class="text-xs" style="color: var(--color-text-tertiary);">
+          配对码：<span id="pairCodeDisplay" class="font-medium" style="color: #FF8C42;">-</span>
+        </span>
+        <span id="connStatus" class="text-xs" style="color: var(--color-text-tertiary);">连接中...</span>
+      </div>
+
+      <!-- 订单列表 -->
+      <div id="orders-list" class="space-y-3">
+        <div class="empty-state">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#D4C5B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px;">
+            <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16l7-3 7 3z"/>
+          </svg>
+          <p class="text-sm" style="color: var(--color-text-tertiary);">还没有订单</p>
+          <p class="text-xs mt-1" style="color: var(--color-text-tertiary);">等对方下单后会自动显示在这里</p>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- 设置面板 -->
+    <div id="settings-mask" style="display:none; position:fixed; inset:0; background:rgba(61,44,34,0.4); z-index:100;" onclick="toggleSettings()"></div>
+    <div id="settings-panel" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#FFFFFF; border-radius:20px 20px 0 0; z-index:101; padding:20px 20px 30px; box-shadow:0 -4px 20px rgba(0,0,0,0.1);">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold" style="color:#3D2C22;">我的设置</h3>
+        <button onclick="toggleSettings()" class="w-7 h-7 rounded-full flex items-center justify-center" style="background:#F5F0EB; color:#7A6558;">✕</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm font-medium mb-1.5 block" style="color:#3D2C22;">我的称呼</label>
+          <input id="setting-name" type="text" class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style="background:#FFFAF6; border:1.5px solid #FFE8D6; color:#3D2C22;" placeholder="下单时显示的称呼">
+          <p class="text-xs mt-1" style="color:#A89588;">下单后，对方接单台上会显示这个名字</p>
+        </div>
+        <div>
+          <label class="text-sm font-medium mb-1.5 block" style="color:#3D2C22;">配对码</label>
+          <input id="setting-pair" type="text" class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style="background:#FFFAF6; border:1.5px solid #FFE8D6; color:#3D2C22;" placeholder="两个人要一样才能互通">
+          <p class="text-xs mt-1" style="color:#A89588;">两个人填同一个配对码，订单才能互相看到</p>
+        </div>
+        <button onclick="saveSettings()" class="w-full py-3 rounded-xl font-bold text-sm" style="background:#FF8C42; color:#FFFFFF;">保存设置</button>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner">
+        <button onclick="window.location.href='index.html'" class="nav-btn" data-nav="home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 11L12 3L20 11" style="stroke-width: 2.2;"/>
+            <path d="M6 10V19C6 19.6 6.4 20 7 20H10V15C10 14.4 10.4 14 11 14H13C13.6 14 14 14.4 14 15V20H17C17.6 20 18 19.6 18 19V10"/>
+            <path d="M2 20L22 20" style="stroke-width: 1.8;"/>
+          </svg>
+          <span>首页</span>
+        </button>
+        <button onclick="window.location.href='cart.html'" class="nav-btn" data-nav="cart">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 7H8.5L10 3H14L12 7H21L19.5 11H17"/>
+            <path d="M19.5 11L17 20H7L4.5 11"/>
+            <path d="M9 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M15 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <span>购物车</span>
+        </button>
+        <button onclick="window.location.href='nutrition.html'" class="nav-btn" data-nav="nutrition">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 8C17 5 14 3 12 3C10 3 7 5 7 8C7 12 12 17 12 17C12 17 17 12 17 8Z" style="stroke-width: 2;"/>
+            <path d="M12 17V21" style="stroke-width: 2;"/>
+            <path d="M10 19L12 17L14 19" style="stroke-width: 1.8;"/>
+            <path d="M8 6C9 7 10 7.5 10 9" style="stroke-width: 1.6;"/>
+          </svg>
+          <span>营养</span>
+        </button>
+        <button class="nav-btn active" data-nav="orders">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span>接单台</span>
+        </button>
+      </div>
+    </nav>
+
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/sync.js"></script>
+  <script>
+    let lastOrderCount = 0;
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    function formatTime(timestamp) {
+      const d = new Date(timestamp);
+      const now = new Date();
+      const diff = (now - d) / 1000;
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+      if (diff < 86400 && d.getDate() === now.getDate()) {
+        return `今天 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      }
+      return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    function isSameDay(ts) {
+      const d = new Date(ts);
+      const now = new Date();
+      return d.getFullYear() === now.getFullYear() &&
+             d.getMonth() === now.getMonth() &&
+             d.getDate() === now.getDate();
+    }
+
+    function setConnStatus(ok, errMsg) {
+      const el = document.getElementById('connStatus');
+      if (!el) return;
+      if (ok) {
+        el.textContent = '· 已连接';
+        el.style.color = '#4CAF50';
+      } else {
+        el.textContent = errMsg ? '· ' + errMsg : '· 连接失败';
+        el.style.color = '#F44336';
+      }
+    }
+
+    function manualRefresh() {
+      const btn = document.getElementById('refreshBtn');
+      if (btn) btn.style.transform = 'rotate(360deg)';
+      if (btn) btn.style.transition = 'transform 0.5s ease';
+      setTimeout(() => { if (btn) btn.style.transform = ''; }, 600);
+      orderSync.getOrders().then(orders => {
+        renderOrders(orders);
+        showToast('刷新成功');
+      }).catch(e => {
+        setConnStatus(false, e.message.substring(0, 15));
+        showToast('刷新失败: ' + e.message);
+      });
+    }
+
+    function renderOrders(orders) {
+      setConnStatus(true);
+      window._currentOrders = orders;
+      if (!window._expandedOrders) window._expandedOrders = new Set();
+      document.getElementById('pairCodeDisplay').textContent = orderSync.getPairCode();
+      const container = document.getElementById('orders-list');
+
+      const pending = orders.filter(o => o.status === 'pending');
+      const done = orders.filter(o => o.status === 'done');
+      const today = orders.filter(o => isSameDay(o.timestamp));
+      document.getElementById('pendingCount').textContent = pending.length;
+      document.getElementById('doneCount').textContent = done.length;
+      document.getElementById('todayCount').textContent = today.length;
+
+      const expandedIds = window._expandedOrders;
+
+      if (orders.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#D4C5B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px;">
+              <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16l7-3 7 3z"/>
+            </svg>
+            <p class="text-sm" style="color: var(--color-text-tertiary);">还没有订单</p>
+            <p class="text-xs mt-1" style="color: var(--color-text-tertiary);">等对方下单后会自动显示在这里</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = orders.map(order => {
+        const isPending = order.status === 'pending';
+        const isExpanded = expandedIds.has(order.id);
+        const itemsHtml = order.items.map(item =>
+          `<div class="flex items-center justify-between py-1">
+            <span class="text-sm" style="color: var(--color-text-primary);">${item.name}</span>
+            <span class="text-sm font-medium" style="color: var(--color-text-secondary);">x${item.quantity} <span style="color: var(--color-text-tertiary);">¥${item.price * item.quantity}</span></span>
+          </div>`
+        ).join('');
+
+        return `
+          <div class="order-card ${order.status}" data-id="${order.id}">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="status-badge ${isPending ? 'status-pending' : 'status-done'}">
+                  ${isPending ? '待接单' : '已完成'}
+                </span>
+                <span class="text-sm font-bold" style="color: var(--color-text-primary);">${order.customer || '对方'}</span>
+              </div>
+              <span class="text-xs" style="color: var(--color-text-tertiary);">${formatTime(order.timestamp)}</span>
+            </div>
+
+            <div class="border-t pt-2" style="border-color: #FFE8D6;">
+              ${itemsHtml}
+            </div>
+
+            <div id="recipe-${order.id}" class="recipe-detail" style="display:${isExpanded ? 'block' : 'none'}; margin-top: 12px; padding: 12px; background: #FFFAF6; border-radius: 12px; border: 1px solid #FFE8D6;">${isExpanded ? buildRecipeHtml(order) : ''}</div>
+
+            <div class="flex items-center justify-between mt-3 pt-3 border-t" style="border-color: #FFE8D6;">
+              <div>
+                <span class="text-xs" style="color: var(--color-text-tertiary);">合计</span>
+                <span class="text-lg font-bold ml-1" style="color: #FF6B8A;">¥${order.total}</span>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="toggleRecipe('${order.id}')" class="text-xs px-3 py-1.5 rounded-full" style="background: #FFF0E6; color: #FF8C42; border: 1px solid #FFE8D6;">${isExpanded ? '收起' : '查看食材与做法'}</button>
+                ${isPending ? `
+                  <button onclick="markDone('${order.id}')" class="btn-primary text-xs" style="padding: 6px 14px;">完成</button>
+                ` : `
+                  <span class="text-xs" style="color: #6BC5A0;">✓ 已完成</span>
+                `}
+                <button onclick="deleteOrder('${order.id}')" class="text-xs px-3 py-1.5 rounded-full" style="background: #F5F0EB; color: #7A6558;">删除</button>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // 新订单提醒
+    let audioCtx = null;
+    function playBeep() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = audioCtx;
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(880, ctx.currentTime);
+        o.frequency.setValueAtTime(1100, ctx.currentTime + 0.15);
+        g.gain.setValueAtTime(0.15, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        o.start();
+        o.stop(ctx.currentTime + 0.5);
+      } catch (e) {}
+    }
+
+    function onNewOrder(newOrders) {
+      playBeep();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      const names = newOrders.map(o => o.customer || '对方').join('、');
+      showToast(`🔔 ${names} 刚下了 ${newOrders.length} 个新订单！`);
+
+      // 让待接单卡片闪一下
+      setTimeout(() => {
+        newOrders.forEach(o => {
+          const card = document.querySelector(`.order-card[data-id="${o.id}"]`);
+          if (card) {
+            card.classList.add('new-order-pulse');
+            setTimeout(() => card.classList.remove('new-order-pulse'), 1500);
+          }
+        });
+      }, 100);
+    }
+
+    async function markDone(orderId) {
+      try {
+        await orderSync.markDone(orderId);
+        showToast('已标记完成');
+        const orders = await orderSync.getOrders();
+        renderOrders(orders);
+      } catch (e) {
+        showToast('操作失败: ' + e.message);
+      }
+    }
+
+    async function deleteOrder(orderId) {
+      try {
+        await orderSync.deleteOrder(orderId);
+        showToast('已删除');
+        const orders = await orderSync.getOrders();
+        renderOrders(orders);
+      } catch (e) {
+        showToast('删除失败: ' + e.message);
+      }
+    }
+
+    function getIngredientEmoji(name) {
+      const map = {'五花肉':'🐷','猪里脊':'🐷','三黄鸡':'🐔','大鹅':'🦢','土豆':'🥔','茄子':'🍆','豆腐':'🧈','鸡蛋':'🥚','葱':'🧅','蒜':'🧄','姜':'🫚','冰糖':'🍬','八角':'⭐','桂皮':'🪵','花椒':'🌶️','辣椒':'🌶️','料酒':'🍶','生抽':'🫗','老抽':'🫗','醋':'🍶','白糖':'🍬','淀粉':'🌾','番茄酱':'🍅','面粉':'🌾','蘑菇':'🍄','榛蘑':'🍄','酸菜':'🥬','粉条':'🍜','草鱼':'🐟','鸭头':'🦆','鸭掌':'🦆','牛肉':'🥩','羊肉':'🐑','虾仁':'🦐','盐':'🧂','花生':'🥜','米饭':'🍚','面条':'🍜','鱼头':'🐟','西红柿':'🍅','豆芽':'🥬','木耳':'🍄','胡萝卜':'🥕','青椒':'🫑','蒜苗':'🧅','萝卜':'🥕','白菜':'🥬','大葱':'🧅','黄瓜':'🥒','洋葱':'🧅','鸭':'🦆','红薯':'🍠','红豆':'🫘','绿豆':'🫘','茶叶':'🍵','糯米':'🍚','红糖':'🍬','葡萄干':'🍇','芝麻':'🫘','粉丝':'🍜','宽面':'🍜','河粉':'🍜','甜面酱':'🫙','黄酱':'🫙','豆瓣酱':'🫙','蚝油':'🫗','蒸鱼豉油':'🫗','麻油':'🫗','香油':'🫗','米酒':'🍶','梅干菜':'🥬','百合':'🌸','陈皮':'🍊','九层塔':'🌿','梅菜':'🥬','河虾':'🦐','牛百叶':'🥩','腊肉':'🥓','腊肠':'🥓','腊鱼':'🐟','皮蛋':'🥚','凉粉':'🥢','蛋黄':'🥚','南瓜':'🎃','桂鱼':'🐟','荸荠':'🥜','青菜':'🥬','荷叶':'🍃','粘米粉':'🌾','韭黄':'🧅','西葫芦':'🥒','羊腿肉':'🐑','羊排':'🍖','大虾':'🦐','面糊':'🌾','番茄':'🍅','鸡胸肉':'🍗','牛腱肉':'🥩','牛杂':'🥩','猪肺':'🥩','百叶':'🥩','尖椒':'🫑','糖':'🍬'};
+      for (const key in map) {
+        if (name.includes(key)) return map[key];
+      }
+      return '🥄';
+    }
+
+    function parseAmount(amountStr) {
+      const match = amountStr.match(/^([\d.]+)(.*)$/);
+      if (match) {
+        return { num: parseFloat(match[1]), unit: match[2].trim() };
+      }
+      return null;
+    }
+
+    function buildIngredientsTotal(order) {
+      const map = {};
+      order.items.forEach(item => {
+        const dish = allDishes.find(d => d.name === item.name);
+        if (!dish || !dish.ingredients) return;
+        dish.ingredients.forEach(ing => {
+          const key = ing.name;
+          const parsed = parseAmount(ing.amount);
+          const qty = item.quantity;
+          if (parsed) {
+            if (!map[key]) {
+              map[key] = { name: key, num: 0, unit: parsed.unit, isMain: ing.isMain };
+            }
+            map[key].num += parsed.num * qty;
+          } else {
+            if (!map[key]) {
+              map[key] = { name: key, num: 0, unit: ing.amount, isMain: ing.isMain, custom: true };
+            }
+            if (map[key].custom) {
+              map[key].num += qty;
+            }
+          }
+        });
+      });
+      const list = Object.values(map).sort((a, b) => (b.isMain ? 1 : 0) - (a.isMain ? 1 : 0));
+      let html = `<div style="font-size:12px;font-weight:600;color:#A89588;margin-bottom:6px;">全部食材合计</div><div style="display:flex;flex-wrap:wrap;gap:4px;">`;
+      list.forEach(ing => {
+        let amount = '';
+        if (ing.custom) {
+          amount = ing.num > 1 ? `x${ing.num}` : ing.unit;
+        } else {
+          const n = Math.round(ing.num * 100) / 100;
+          amount = n + ing.unit;
+        }
+        html += `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#FFF;border:1px solid #FFE8D6;border-radius:8px;font-size:12px;"><span>${getIngredientEmoji(ing.name)}</span><span style="color:#3D2C22;font-weight:${ing.isMain ? '600' : '400'};">${ing.name}</span><span style="color:#A89588;">${amount}</span></span>`;
+      });
+      html += `</div>`;
+      return html;
+    }
+
+    function buildRecipeHtml(order) {
+      let html = buildIngredientsTotal(order);
+      html += `<div style="height:1px;background:#FFE8D6;margin:12px 0;"></div>`;
+      order.items.forEach((item, idx) => {
+        const dish = allDishes.find(d => d.name === item.name);
+        if (!dish) {
+          html += `<div style="margin-bottom: 16px;"><div class="text-sm font-semibold" style="color:#3D2C22;">${idx+1}. ${item.name}</div><div class="text-xs mt-1" style="color:#A89588;">暂无食谱信息</div></div>`;
+          return;
+        }
+        const mainIng = dish.ingredients.filter(i => i.isMain);
+        const seasonIng = dish.ingredients.filter(i => !i.isMain);
+        let ingHtml = '';
+        mainIng.forEach(ing => {
+          ingHtml += `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#FFF;border:1px solid #FFE8D6;border-radius:8px;margin:2px;font-size:12px;"><span>${getIngredientEmoji(ing.name)}</span><span style="color:#3D2C22;">${ing.name}</span><span style="color:#A89588;">${ing.amount}</span></span>`;
+        });
+        seasonIng.forEach(ing => {
+          ingHtml += `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#FFF;border:1px solid #FFE8D6;border-radius:8px;margin:2px;font-size:12px;"><span>${getIngredientEmoji(ing.name)}</span><span style="color:#3D2C22;">${ing.name}</span><span style="color:#A89588;">${ing.amount}</span></span>`;
+        });
+        let stepsHtml = '';
+        dish.steps.forEach((step, sIdx) => {
+          stepsHtml += `<div style="display:flex;gap:8px;margin-top:8px;"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#FF8C42;color:#FFF;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;">${sIdx+1}</span><div style="flex:1;"><div style="font-size:12px;font-weight:600;color:#3D2C22;">${step.title}</div><div style="font-size:12px;color:#7A6558;margin-top:2px;">${step.description}</div></div></div>`;
+        });
+        html += `
+          <div style="margin-bottom: 16px; padding-bottom: 12px; ${idx < order.items.length-1 ? 'border-bottom: 1px dashed #FFE8D6;' : ''}">
+            <div class="flex items-center gap-2 mb-2">
+              <span style="font-size:14px;font-weight:700;color:#3D2C22;">${idx+1}. ${dish.name}</span>
+              <span style="font-size:11px;padding:2px 6px;background:#FFF0E6;color:#FF8C42;border-radius:6px;">${dish.time}</span>
+            </div>
+            <div style="font-size:11px;font-weight:600;color:#A89588;margin-bottom:4px;">食材</div>
+            <div style="display:flex;flex-wrap:wrap;margin-bottom:8px;">${ingHtml}</div>
+            <div style="font-size:11px;font-weight:600;color:#A89588;margin-bottom:4px;">做法</div>
+            <div>${stepsHtml}</div>
+          </div>`;
+      });
+      return html;
+    }
+
+    function toggleRecipe(orderId) {
+      if (!window._expandedOrders) window._expandedOrders = new Set();
+      const panel = document.getElementById('recipe-' + orderId);
+      const btn = event ? event.target : null;
+      if (!panel) return;
+      if (panel.style.display === 'none') {
+        const order = window._currentOrders && window._currentOrders.find(o => o.id === orderId);
+        if (!order) return;
+        panel.innerHTML = buildRecipeHtml(order);
+        panel.style.display = 'block';
+        window._expandedOrders.add(orderId);
+        if (btn) btn.textContent = '收起';
+      } else {
+        panel.style.display = 'none';
+        window._expandedOrders.delete(orderId);
+        if (btn) btn.textContent = '查看食材与做法';
+      }
+    }
+
+    async function clearFinishedOrders() {
+      try {
+        await orderSync.clearFinished();
+        showToast('已清理完成订单');
+        const orders = await orderSync.getOrders();
+        renderOrders(orders);
+      } catch (e) {
+        showToast('清理失败: ' + e.message);
+      }
+    }
+
+    function toggleSettings() {
+      const mask = document.getElementById('settings-mask');
+      const panel = document.getElementById('settings-panel');
+      if (mask.style.display === 'none') {
+        document.getElementById('setting-name').value = orderSync.getCustomerName();
+        document.getElementById('setting-pair').value = orderSync.getPairCode();
+        mask.style.display = 'block';
+        panel.style.display = 'block';
+      } else {
+        mask.style.display = 'none';
+        panel.style.display = 'none';
+      }
+    }
+
+    function saveSettings() {
+      const name = document.getElementById('setting-name').value.trim();
+      const pair = document.getElementById('setting-pair').value.trim();
+      if (!name) { showToast('请输入称呼'); return; }
+      if (!pair) { showToast('请输入配对码'); return; }
+      orderSync.setCustomerName(name);
+      orderSync.setPairCode(pair);
+      toggleSettings();
+      showToast('设置已保存');
+      orderSync.stopPolling();
+      orderSync.startPolling(renderOrders, onNewOrder);
+    }
+
+    // 启动轮询
+    orderSync.startPolling(renderOrders, onNewOrder);
+
+    // 页面隐藏时降低频率（可选），可见时立即刷新
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        orderSync.getOrders().then(renderOrders).catch(() => setConnStatus(false));
+      }
+    });
+
+    // 首次点击页面解锁音频（浏览器自动播放限制）
+    document.addEventListener('click', () => {
+      if (!audioCtx) {
+        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+      }
+    }, { once: true });
+  </script>
+
+</body>
+</html>

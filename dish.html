@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>菜品详情</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    .hero-image-container {
+      width: 100%;
+      height: 260px;
+      border-radius: 0 0 24px 24px;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero-image-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .hero-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.45) 100%);
+      border-radius: 0 0 24px 24px;
+    }
+    .hero-info {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.125rem;
+      color: #FFFFFF;
+      background: #FF8C42;
+      box-shadow: 2px 2px 0px rgba(61,44,34,0.08);
+      flex-shrink: 0;
+      border: 2px solid #F57C2E;
+    }
+    .timeline-connector {
+      position: absolute;
+      left: 19px;
+      top: 44px;
+      bottom: -16px;
+      width: 2px;
+      background: repeating-linear-gradient(
+        to bottom,
+        #FFE8D6 0px, #FFE8D6 6px,
+        transparent 6px, transparent 12px
+      );
+    }
+    .nutrition-chip {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+      gap: 2px;
+    }
+    .ingredient-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #FFFFFF;
+      border: 1.5px solid #FFE8D6;
+    }
+    .dish-chip-scroll {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      padding-right: 4px;
+    }
+    .dish-chip-scroll::-webkit-scrollbar { display: none; }
+    .dish-chip-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+    .dish-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 16px;
+      background: #FFFFFF;
+      border: 1.5px solid #FFE8D6;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #3D2C22;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .dish-chip:hover, .dish-chip:active {
+      background: #FFF0E6;
+      border-color: #FF8C42;
+    }
+    .dish-chip-active {
+      background: #FF8C42 !important;
+      color: #FFFFFF !important;
+      border-color: #FF8C42 !important;
+      box-shadow: 0 3px 10px rgba(255,140,66,0.3);
+    }
+    .page-scroll {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .bottom-bar-safe {
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    .qty-btn-small {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid #FFE8D6;
+      background: #FFFFFF;
+      color: #FF8C42;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+      line-height: 1;
+      user-select: none;
+    }
+    .qty-btn-small:active {
+      background: #FF8C42;
+      color: #FFFFFF;
+      border-color: #FF8C42;
+      transform: scale(0.92);
+    }
+    .favorite-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .favorite-btn:active {
+      transform: scale(0.9);
+    }
+    .section-title-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-card {
+      background: #FFFFFF;
+      border: 1.5px solid #FFE8D6;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(61, 44, 34, 0.04);
+    }
+  </style>
+</head>
+<body>
+  <!-- 固定顶部导航栏 -->
+  <div class="top-header">
+    <div class="top-header-inner">
+      <button id="back-btn" class="back-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3D2C22" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18L9 12L15 6"/>
+        </svg>
+      </button>
+      <span class="font-semibold text-base" style="color: #3D2C22;">菜品详情</span>
+      <button id="share-btn" class="back-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D2C22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+      </button>
+      <a href="orders.html" class="back-btn" style="background: linear-gradient(135deg, #FF8C42, #FF6B8A); color: #FFFFFF;" title="接单台">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- 主内容区 -->
+  <div id="dish-content" class="page-scroll" style="padding-top: 60px; padding-bottom: 140px;"></div>
+
+  <!-- 底部固定栏 -->
+  <div id="bottom-bar" class="fixed z-50" style="bottom: 60px; left: 0; right: 0; background: #FFFFFF; border-top: 1.5px solid #FFE8D6; box-shadow: 0 -2px 12px rgba(61,44,34,0.05);">
+    <div class="flex items-center justify-between max-w-md mx-auto px-5 py-3 bottom-bar-safe">
+      <div class="flex items-center gap-3">
+        <div>
+          <span class="text-xs" style="color: #A89588;">约</span>
+          <span id="price-display" class="text-xl font-bold ml-0.5" style="color: #FF6B8A;">¥0</span>
+          <span class="text-xs ml-0.5" style="color: #A89588;">/份</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="qty-minus" class="qty-btn">-</button>
+          <span id="qty-number" class="qty-number">1</span>
+          <button id="qty-plus" class="qty-btn">+</button>
+        </div>
+      </div>
+      <button id="add-to-cart-btn" class="btn-primary flex items-center gap-2" style="padding: 10px 20px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+        加入购物车
+      </button>
+    </div>
+  </div>
+
+  <!-- 底部导航栏 -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button data-nav="home" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 11L12 3L20 11" stroke-width="2.2"/>
+          <path d="M6 10V19C6 19.6 6.4 20 7 20H10V15C10 14.4 10.4 14 11 14H13C13.6 14 14 14.4 14 15V20H17C17.6 20 18 19.6 18 19V10"/>
+          <path d="M2 20L22 20" stroke-width="1.8"/>
+        </svg>
+        <span>首页</span>
+      </button>
+      <button data-nav="cart" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 7H8.5L10 3H14L12 7H21L19.5 11H17"/>
+          <path d="M19.5 11L17 20H7L4.5 11"/>
+          <path d="M9 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M15 20V20.01" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <span>购物车</span>
+      </button>
+      <button data-nav="nutrition" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 8C17 5 14 3 12 3C10 3 7 5 7 8C7 12 12 17 12 17C12 17 17 12 17 8Z"/>
+          <path d="M12 17V21"/>
+          <path d="M10 19L12 17L14 19"/>
+        </svg>
+        <span>营养</span>
+      </button>
+      <button data-nav="orders" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span>接单台</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Toast 提示 -->
+  <div id="toast" class="toast"></div>
+
+  <script src="js/data.js"></script>
+  <script>
+    let currentDish = null;
+    let quantity = 1;
+
+    function getIngredientEmoji(name) {
+      const map = {'五花肉':'🐷','猪里脊':'🐷','三黄鸡':'🐔','大鹅':'🦢','土豆':'🥔','茄子':'🍆','豆腐':'🧈','鸡蛋':'🥚','葱':'🧅','蒜':'🧄','姜':'🫚','冰糖':'🍬','八角':'⭐','桂皮':'🪵','花椒':'🌶️','辣椒':'🌶️','料酒':'🍶','生抽':'🫗','老抽':'🫗','醋':'🍶','白糖':'🍬','淀粉':'🌾','番茄酱':'🍅','面粉':'🌾','蘑菇':'🍄','榛蘑':'🍄','酸菜':'🥬','粉条':'🍜','草鱼':'🐟','鸭头':'🦆','鸭掌':'🦆','牛肉':'🥩','羊肉':'🐑','虾仁':'🦐','盐':'🧂','花生':'🥜','米饭':'🍚','面条':'🍜','鱼头':'🐟','西红柿':'🍅','豆芽':'🥬','木耳':'🍄','胡萝卜':'🥕','青椒':'🫑','蒜苗':'🧅','萝卜':'🥕','白菜':'🥬','大葱':'🧅','黄瓜':'🥒','洋葱':'🧅','鸭':'🦆','红薯':'🍠','粽子':'🎋','红豆':'🫘','绿豆':'🫘','茶叶':'🍵','糯米':'🍚','红糖':'🍬','冰粉':'🧊','葡萄干':'🍇','芝麻':'🫘','粉丝':'🍜','宽面':'🍜','河粉':'🍜','甜面酱':'🫙','黄酱':'🫙','豆瓣酱':'🫙','蚝油':'🫗','蒸鱼豉油':'🫗','麻油':'🫗','香油':'🫗','米酒':'🍶','梅干菜':'🥬','粽叶':'🎋','百合':'🌸','陈皮':'🍊','九层塔':'🌿','梅菜':'🥬','河虾':'🦐','牛百叶':'🥩','腊肉':'🥓','腊肠':'🥓','腊鱼':'🐟','皮蛋':'🥚','凉粉':'🥢','饼':'🫓','薄脆':'🥮','红油':'🌶️','蛋黄':'🥚','南瓜':'🎃','桂鱼':'🐟','荸荠':'🥜','青菜':'🥬','荷叶':'🍃','粘米粉':'🌾','韭黄':'🧅','西葫芦':'🥒','羊腿肉':'🐑','羊排':'🍖','大虾':'🦐','面糊':'🌾','番茄':'🍅','鸡胸肉':'🍗','牛腱肉':'🥩','牛杂':'🥩','火烧':'🍞','猪肺':'🥩','百叶':'🥩','尖椒':'🫑','糖':'🍬'};
+      for (const key in map) {
+        if (name.includes(key)) return map[key];
+      }
+      return '🥄';
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    function getDishIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      return parseInt(id) || 1;
+    }
+
+    function renderDish(dishId) {
+      const dish = allDishes.find(d => d.id === dishId) || allDishes[0];
+      currentDish = dish;
+      quantity = 1;
+
+      document.getElementById('price-display').textContent = '¥' + dish.price;
+      document.getElementById('qty-number').textContent = quantity;
+      document.title = dish.name + ' - 菜品详情';
+
+      const mainIngredients = dish.ingredients.filter(i => i.isMain);
+      const seasonings = dish.ingredients.filter(i => !i.isMain);
+
+      let stepsHtml = '';
+      dish.steps.forEach((step, idx) => {
+        const isLast = idx === dish.steps.length - 1;
+        stepsHtml += `
+          <div class="relative">
+            ${!isLast ? '<div class="timeline-connector"></div>' : ''}
+            <div class="flex gap-3" style="padding-left: 4px;">
+              <div class="step-number">${idx + 1}</div>
+              <div class="flex-1 step-card">
+                <h3 class="font-semibold text-sm mb-1.5" style="color: #3D2C22;">${step.title}</h3>
+                <p class="text-sm leading-relaxed" style="color: #7A6558;">${step.description}</p>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      let mainIngHtml = '';
+      mainIngredients.forEach(ing => {
+        const emoji = getIngredientEmoji(ing.name);
+        mainIngHtml += `
+          <div class="ingredient-pill">
+            <span style="font-size: 18px; line-height: 1;">${emoji}</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium truncate" style="color: #3D2C22;">${ing.name}</div>
+              <div class="text-xs" style="color: #A89588;">${ing.amount}</div>
+            </div>
+          </div>`;
+      });
+
+      let seasonIngHtml = '';
+      seasonings.forEach(ing => {
+        const emoji = getIngredientEmoji(ing.name);
+        seasonIngHtml += `
+          <div class="ingredient-pill">
+            <span style="font-size: 16px; line-height: 1;">${emoji}</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium truncate" style="color: #3D2C22;">${ing.name}</div>
+              <div class="text-xs" style="color: #A89588;">${ing.amount}</div>
+            </div>
+          </div>`;
+      });
+
+      // 换个菜看看：根据当前菜品分类推荐同类菜品，最多12个，找不到则使用默认推荐列表
+      let relatedDishes = allDishes.filter(x => x.category === dish.category && x.id !== dish.id).slice(0, 12);
+      if (relatedDishes.length === 0) {
+        const defaultIds = [1,2,3,6,7,8,9,11,12,14,19,32];
+        relatedDishes = defaultIds.map(pid => allDishes.find(x => x.id === pid)).filter(Boolean);
+      }
+      let chipsHtml = '';
+      relatedDishes.forEach(d => {
+        const isActive = d.id === dish.id;
+        chipsHtml += `<a href="dish.html?id=${d.id}" class="dish-chip ${isActive ? 'dish-chip-active' : ''}"><span>${d.name}</span></a>`;
+      });
+
+      let tagsHtml = `
+        <span class="tag-pill tag-default">${dish.region || dish.category}</span>
+        <span class="tag-pill tag-time">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px; vertical-align: -1px;">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          ${dish.time}
+        </span>
+        <span class="tag-pill tag-servings">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px; vertical-align: -1px;">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          </svg>
+          ${dish.servings}
+        </span>`;
+      if (dish.difficulty) {
+        tagsHtml += `<span class="tag-pill tag-difficulty">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px; vertical-align: -1px;">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          ${dish.difficulty}
+        </span>`;
+      }
+      if (dish.spicy) {
+        tagsHtml += `<span class="tag-pill tag-spicy">🌶️ 辣</span>`;
+      }
+
+      const isFavorite = dish.favorite;
+      const heartFill = isFavorite ? '#FF6B8A' : 'none';
+      const heartStroke = isFavorite ? '#FF6B8A' : '#FF6B8A';
+
+      const imagePath = dish.image;
+
+      const container = document.getElementById('dish-content');
+      container.innerHTML = `
+        <!-- 菜品大图 -->
+        <div class="hero-image-container">
+          <img src="${imagePath}" alt="${dish.name}" onerror="this.style.display='none'">
+          <div class="hero-overlay"></div>
+          <div class="hero-info">
+            <h1 class="font-bold" style="font-size: 1.625rem; color: #FFFFFF; text-shadow: 0 1px 4px rgba(0,0,0,0.3); margin-bottom: 12px;">${dish.name}</h1>
+            <div class="flex items-center gap-2 flex-wrap">
+              ${tagsHtml}
+            </div>
+          </div>
+          <div style="position: absolute; top: 16px; right: 16px;">
+            <button id="favorite-btn" class="favorite-btn">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="${heartFill}" stroke="${heartStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 营养成分卡片 -->
+        <div style="padding: 20px 20px 8px 20px;">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="section-title-icon" style="background: #E8F8F1;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6BC5A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22C12 22 4 16 4 10C4 5.58 7.58 2 12 2C16.42 2 20 5.58 20 10C20 16 12 22 12 22Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <h2 class="font-bold text-lg" style="color: #3D2C22;">营养概览</h2>
+          </div>
+          <div class="flex gap-2">
+            <div class="nutrition-chip" style="background: #FFF0E6;">
+              <span class="text-xs" style="color: #A89588;">热量</span>
+              <span class="text-sm font-bold" style="color: #FF8C42;">${dish.calories}</span>
+              <span class="text-xs" style="color: #A89588;">kcal</span>
+            </div>
+            <div class="nutrition-chip" style="background: #E8F8F1;">
+              <span class="text-xs" style="color: #A89588;">蛋白质</span>
+              <span class="text-sm font-bold" style="color: #6BC5A0;">${dish.protein}g</span>
+              <span class="text-xs" style="color: #A89588;">&nbsp;</span>
+            </div>
+            <div class="nutrition-chip" style="background: #E3F2FD;">
+              <span class="text-xs" style="color: #A89588;">碳水</span>
+              <span class="text-sm font-bold" style="color: #42A5F5;">${dish.carbs}g</span>
+              <span class="text-xs" style="color: #A89588;">&nbsp;</span>
+            </div>
+            <div class="nutrition-chip" style="background: #FFE8EE;">
+              <span class="text-xs" style="color: #A89588;">脂肪</span>
+              <span class="text-sm font-bold" style="color: #FF6B8A;">${dish.fat}g</span>
+              <span class="text-xs" style="color: #A89588;">&nbsp;</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 换个菜看看 -->
+        <div style="padding: 20px 20px 8px 20px;">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="section-title-icon" style="background: #E3F2FD;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#42A5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+              </svg>
+            </div>
+            <h2 class="font-bold text-lg" style="color: #3D2C22;">换个菜看看</h2>
+          </div>
+          <div class="dish-chip-scroll">
+            ${chipsHtml}
+          </div>
+        </div>
+
+        <!-- 食材清单 -->
+        <div style="padding: 20px 20px 8px 20px;">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="section-title-icon" style="background: #FFF0E6;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12C2 12 5 8 8 8C11 8 11 12 14 12C17 12 17 8 20 8C23 8 23 12 23 12"/>
+                <path d="M2 17C2 17 5 13 8 13C11 13 11 17 14 17C17 17 17 13 20 13C23 13 23 17 23 17" opacity="0.5"/>
+              </svg>
+            </div>
+            <h2 class="font-bold text-lg" style="color: #3D2C22;">食材清单</h2>
+          </div>
+
+          <div class="flex items-center gap-1.5 mb-3">
+            <span class="text-sm font-semibold" style="color: #FF8C42;">主料</span>
+            <div style="flex: 1; height: 1px; background: #FFE8D6;"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5 mb-5">
+            ${mainIngHtml}
+          </div>
+
+          <div class="flex items-center gap-1.5 mb-3">
+            <span class="text-sm font-semibold" style="color: #6BC5A0;">辅料</span>
+            <div style="flex: 1; height: 1px; background: #D4F0E3;"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            ${seasonIngHtml}
+          </div>
+        </div>
+
+        <!-- 烹饪步骤 -->
+        <div style="padding: 20px 20px 8px 20px;">
+          <div class="flex items-center gap-2 mb-5">
+            <div class="section-title-icon" style="background: #FFF0E6;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/>
+                <line x1="6" y1="17" x2="18" y2="17"/><path d="M12 3v3"/>
+              </svg>
+            </div>
+            <h2 class="font-bold text-lg" style="color: #3D2C22;">烹饪步骤</h2>
+          </div>
+          <div class="flex flex-col gap-4">
+            ${stepsHtml}
+          </div>
+        </div>
+
+        <div style="height: 16px;"></div>
+      `;
+
+      const favBtn = document.getElementById('favorite-btn');
+      if (favBtn) {
+        favBtn.addEventListener('click', toggleFavorite);
+      }
+
+      window.scrollTo(0, 0);
+    }
+
+    function toggleFavorite() {
+      if (!currentDish) return;
+      currentDish.favorite = !currentDish.favorite;
+      const favBtn = document.getElementById('favorite-btn');
+      if (favBtn) {
+        const svg = favBtn.querySelector('svg');
+        if (currentDish.favorite) {
+          svg.setAttribute('fill', '#FF6B8A');
+          showToast('已收藏');
+        } else {
+          svg.setAttribute('fill', 'none');
+          showToast('已取消收藏');
+        }
+      }
+    }
+
+    function updateQuantity(delta) {
+      quantity = Math.max(1, quantity + delta);
+      document.getElementById('qty-number').textContent = quantity;
+      document.getElementById('price-display').textContent = '¥' + (currentDish.price * quantity);
+    }
+
+    function addToCart() {
+      if (!currentDish) return;
+      cartData.addItem(currentDish, quantity);
+      showToast(`已加入购物车 (${quantity}份)`);
+      updateCartBadges(true);
+    }
+
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = 'index.html';
+      }
+    }
+
+    function shareDish() {
+      if (navigator.share) {
+        navigator.share({
+          title: currentDish.name,
+          text: '来看看这道' + currentDish.name + '吧！',
+          url: window.location.href
+        });
+      } else {
+        showToast('分享链接已复制');
+      }
+    }
+
+    document.getElementById('back-btn').addEventListener('click', goBack);
+    document.getElementById('share-btn').addEventListener('click', shareDish);
+    document.getElementById('qty-minus').addEventListener('click', () => updateQuantity(-1));
+    document.getElementById('qty-plus').addEventListener('click', () => updateQuantity(1));
+    document.getElementById('add-to-cart-btn').addEventListener('click', addToCart);
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nav = btn.getAttribute('data-nav');
+        if (nav === 'home') {
+          window.location.href = 'index.html';
+        } else if (nav === 'cart') {
+          window.location.href = 'cart.html';
+        } else if (nav === 'nutrition') {
+          window.location.href = 'nutrition.html';
+        } else if (nav === 'orders') {
+          window.location.href = 'orders.html';
+        }
+      });
+    });
+
+    const dishId = getDishIdFromUrl();
+    renderDish(dishId);
+  </script>
+</body>
+</html>
