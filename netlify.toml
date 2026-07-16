@@ -3,6 +3,6 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://jsonblob.com/api/jsonBlob/:splat"
+  to = "https://jsonblob.com/api/:splat"
   status = 200
   force = true
