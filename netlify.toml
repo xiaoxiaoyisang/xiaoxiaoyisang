@@ -1,8 +1,8 @@
 [build]
-  publish = "."
   functions = "netlify/functions"
 
 [[redirects]]
-  from = "/api/orders"
-  to = "/.netlify/functions/orders"
+  from = "/api/*"
+  to = "https://jsonblob.com/api/jsonBlob/:splat"
   status = 200
+  force = true
